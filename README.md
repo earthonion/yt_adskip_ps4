@@ -1,3 +1,5 @@
+# Cobalt PS4 JS Injector
+
 a plugin that injects ad block javascript into the cobalt app for ps4.
 
 note if it doesnt load go to settings>app info spam x until you get a dev mode prompt . this will refresh the page.
