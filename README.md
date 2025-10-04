@@ -46,12 +46,16 @@ The plugin hooks into the YouTube Cobalt app's HTML script execution engine and 
 
 make sure '$OO_PS$_TOOLCHAIN' is in path (see OpenOrbis for install and setup instructions)
 
+
 ```bash
-cd plugin_src/test2
+git clone https://github.com/GoldHEN/GoldHEN_Plugins_Repository/
+cd GoldHEN_Plugin_Repository/plugin_src/
+git clone https://github.com/earthonion/cobalt-ps4-js-inject/
+cd cobalt-ps4-js-inject
 make clean && make
 ```
 
-The compiled plugin will be in `bin/plugins/prx_final/test2.prx`
+The compiled plugin will be in `bin/plugins/prx_final/cobalt-ps4-js-inject.prx`
 
 ## Future Plans
 
