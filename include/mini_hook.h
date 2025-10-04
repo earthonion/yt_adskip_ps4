@@ -5,7 +5,6 @@
 
 // Orbis / GoldHEN helpers you already have
 #include "plugin_common.h"
-#include "utils.h"
 #include "patch.h"
 #include "hde/hde64.h"
 

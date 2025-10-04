@@ -11,7 +11,6 @@
 #include "mini_hook.h"
 #include "patch.h"
 #include "util.h"
-#include "utils.h"
 
 extern "C" void mh_log(const char* fmt, ...);
 
@@ -230,8 +229,6 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
          (void*)BYPASS_CSP_ADDR);
 
   g_direct_injection_done = false;
-
-  patch_unsafe_inline_assignment();
   return 0;
 }
 
