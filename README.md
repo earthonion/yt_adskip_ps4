@@ -44,6 +44,8 @@ The plugin hooks into the YouTube Cobalt app's HTML script execution engine and 
 
 ## Building from Source
 
+make sure '$OO_PS$_TOOLCHAIN' is in path (see OpenOrbis for install and setup instructions)
+
 ```bash
 cd plugin_src/test2
 make clean && make
