@@ -9,7 +9,8 @@
 #include <algorithm>
 
 #include <orbis/libkernel.h>      // sceKernelReadTsc
-#include "mini_hook.h"            
+#include <orbis/SysUtil.h>
+#include "mini_hook.h"
 #include "patch.h"
 #include "util.h"
 #include "utils.h"
@@ -23,7 +24,7 @@ extern "C" void mh_log(const char* fmt, ...);
 
 using ExecuteFn   = void (*)(void* self, long arg2, uint64_t arg3,
                              char is_external);
-using BypassCspFn = long (*)(void* param_1,ulong param_2,long param_3,ulong param_4,int param_5); //not working
+using BypassCspFn = long (*)(void* param_1,ulong param_2,long param_3,ulong param_4,int param_5);
 
 static mh_hook_t  g_execute_hook{};
 static mh_hook_t  g_csp_hook{};
@@ -108,8 +109,10 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
 
   if (try_extract_script_from_candidate(static_cast<uint64_t>(arg2), active_script, &learned)) {
     have_active = !active_script.empty();
+    MH_LOG("[extract] from arg2=%p learned.valid=%d len=%zu", (void*)static_cast<uintptr_t>(arg2), learned.valid ? 1 : 0, active_script.size());
   } else if (try_extract_script_from_candidate(arg3, active_script, &learned)) {
     have_active = !active_script.empty();
+    MH_LOG("[extract] from arg3=%p learned.valid=%d len=%zu", (void*)arg3, learned.valid ? 1 : 0, active_script.size());
   }
 
   if (learned.valid) {
@@ -121,11 +124,15 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
       MH_LOG("[layout] data@+0x%zx size@+0x%zx cap@+0x%zx span=0x%zx",
              g_layout.data_off, g_layout.size_off, g_layout.cap_off, g_layout.header_span);
     }
+  } else {
+    MH_LOG("[extract] no layout learned, g_layout.valid=%d", g_layout.valid ? 1 : 0);
   }
 
   if (!have_active && lookup_script_source(self, active_script)) {
     have_active = true;
   }
+
+  // Inject on ANY script (no trigger pattern check)
 
   if (have_active && !active_script.empty()) {
     log_preview_bounded(reinterpret_cast<const uint8_t*>(active_script.data()),
@@ -143,17 +150,26 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   }
   if (!header_addr) {
     MH_LOG("[inject.err] reason=no-header");
+    g_execute_reentry = true;
+    g_real_Execute(self, arg2, arg3, is_external);
+    g_execute_reentry = false;
     return;
   }
 
   if (!ensure_js_payload_loaded()) {
     MH_LOG("[execute.inject] payload unavailable");
+    g_execute_reentry = true;
+    g_real_Execute(self, arg2, arg3, is_external);
+    g_execute_reentry = false;
     return;
   }
 
   const std::string& payload = get_js_payload();
   if (payload.empty()) {
     MH_LOG("[execute.inject] payload empty after normalization");
+    g_execute_reentry = true;
+    g_real_Execute(self, arg2, arg3, is_external);
+    g_execute_reentry = false;
     return;
   }
 
@@ -178,6 +194,9 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                         layout.cap_off  + sizeof(uint64_t) <= header.size();
   if (!layout_span_ok) {
     MH_LOG("[inject.err] reason=layout-span");
+    g_execute_reentry = true;
+    g_real_Execute(self, arg2, arg3, is_external);
+    g_execute_reentry = false;
     return;
   }
   g_layout = layout;
@@ -224,8 +243,8 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   g_direct_injection_done = true;
   MH_LOG("[inject.exec] mode=direct");
   MH_LOG("[inject] direct call ok");
+  return;
 }
-
 extern "C" long my_BypassCsp(void* param_1,ulong param_2,long param_3,ulong param_4,int param_5) {
   return 1;
 }
@@ -268,6 +287,8 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
          (void*)g_real_BypassCsp, g_csp_hook.tramp_mem,
          (void*)BYPASS_CSP_ADDR);
 
+  g_direct_injection_done = false;
+
   patch_unsafe_inline_assignment();
   return 0;
 }
@@ -285,6 +306,7 @@ extern "C" s32 attr_public plugin_unload(s32, const char**) {
   g_layout = {};
   g_live_injections.clear();
   g_live_injections.shrink_to_fit();
+  g_direct_injection_done = false;
   MH_LOG("[hook] hooks removed");
   return 0;
 }

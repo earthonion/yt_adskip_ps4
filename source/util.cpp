@@ -266,7 +266,7 @@ void log_memory_hexdump(const void* addr, size_t bytes) {
 
   uintptr_t raw = reinterpret_cast<uintptr_t>(addr);
   if (!is_canonical_address(raw)) {
-    MH_LOG("[prepare] hexdump skipped (non-canonical %p)", addr);
+    //MH_LOG("[prepare] hexdump skipped (non-canonical %p)", addr);
     return;
   }
 
@@ -286,7 +286,7 @@ void log_memory_hexdump(const void* addr, size_t bytes) {
     }
     hex[row_len * 3] = '\0';
     ascii[row_len] = '\0';
-    MH_LOG("[prepare] mem[%p+0x%02zx] %s|%s|", addr, offset, hex, ascii);
+    //MH_LOG("[prepare] mem[%p+0x%02zx] %s|%s|", addr, offset, hex, ascii);
   }
 }
 
@@ -321,27 +321,37 @@ bool ensure_js_payload_loaded() {
       "(function(){\n"
       "  if (window.__MH_ADSKIP_READY) { return; }\n"
       "  window.__MH_ADSKIP_READY = true;\n"
-      "  try {\n"
-      "    var bannerId = '__MH_ADSKIP_BANNER';\n"
-      "    if (!document.getElementById(bannerId)) {\n"
-      "      var banner = document.createElement('div');\n"
-      "      banner.id = bannerId;\n"
-      "      banner.textContent = 'Ad skip enabled';\n"
-      "      banner.style.position = 'fixed';\n"
-      "      banner.style.left = '10px';\n"
-      "      banner.style.bottom = '10px';\n"
-      "      banner.style.zIndex = '2147483647';\n"
-      "      banner.style.background = 'rgba(0,0,0,0.8)';\n"
-      "      banner.style.color = '#00FF99';\n"
-      "      banner.style.padding = '8px 14px';\n"
-      "      banner.style.font = '16px/1.2 sans-serif';\n"
-      "      banner.style.borderRadius = '4px';\n"
-      "      banner.style.boxShadow = '0 3px 10px rgba(0,0,0,0.4)';\n"
-      "      document.documentElement.appendChild(banner);\n"
-      "      setTimeout(function(){ try { var b = document.getElementById(bannerId); if (b) b.remove(); } catch(_) {} }, 4000);\n"
-      "    }\n"
-      "  } catch (_) {}\n"
-      "  setInterval(function(){\n"
+      "  \n"
+      "  var bannerShown = false;\n"
+      "  var adSkipActive = false;\n"
+      "  \n"
+      "  function showBanner() {\n"
+      "    if (bannerShown) return;\n"
+      "    try {\n"
+      "      if (!document.documentElement) return;\n"
+      "      var bannerId = '__MH_ADSKIP_BANNER';\n"
+      "      if (!document.getElementById(bannerId)) {\n"
+      "        var banner = document.createElement('div');\n"
+      "        banner.id = bannerId;\n"
+      "        banner.textContent = 'Ad skip enabled';\n"
+      "        banner.style.position = 'fixed';\n"
+      "        banner.style.left = '10px';\n"
+      "        banner.style.bottom = '10px';\n"
+      "        banner.style.zIndex = '2147483647';\n"
+      "        banner.style.background = 'rgba(0,0,0,0.8)';\n"
+      "        banner.style.color = '#00FF99';\n"
+      "        banner.style.padding = '8px 14px';\n"
+      "        banner.style.font = '16px/1.2 sans-serif';\n"
+      "        banner.style.borderRadius = '4px';\n"
+      "        banner.style.boxShadow = '0 3px 10px rgba(0,0,0,0.4)';\n"
+      "        document.documentElement.appendChild(banner);\n"
+      "        bannerShown = true;\n"
+      "        setTimeout(function(){ try { var b = document.getElementById(bannerId); if (b) b.remove(); } catch(_) {} }, 4000);\n"
+      "      }\n"
+      "    } catch (_) {}\n"
+      "  }\n"
+      "  \n"
+      "  function skipAds() {\n"
       "    try {\n"
       "      var videos = document.getElementsByClassName('html5-main-video');\n"
       "      if (document.getElementsByClassName('ad-showing').length > 0 && videos.length > 0) {\n"
@@ -351,7 +361,21 @@ bool ensure_js_payload_loaded() {
       "        }\n"
       "      }\n"
       "    } catch (_) {}\n"
-      "  }, 50);\n"
+      "  }\n"
+      "  \n"
+      "  function init() {\n"
+      "    showBanner();\n"
+      "    if (!adSkipActive) {\n"
+      "      adSkipActive = true;\n"
+      "      setInterval(skipAds, 50);\n"
+      "    }\n"
+      "  }\n"
+      "  \n"
+      "  if (document.readyState === 'loading') {\n"
+      "    document.addEventListener('DOMContentLoaded', init);\n"
+      "  } else {\n"
+      "    init();\n"
+      "  }\n"
       "})();\n";
 
   g_js_payload.assign(kHardcodedJs, kHardcodedJs + sizeof(kHardcodedJs) - 1);
@@ -526,11 +550,7 @@ bool try_extract_script_from_candidate(uint64_t candidate, std::string& out,
     return false;
   }
 
-  if (read_remote_ascii(candidate, 2048, out)) {
-    return true;
-  }
-
-  constexpr size_t kProbe = 0x80;
+  constexpr size_t kProbe = 0x100;
   std::array<uint8_t, kProbe> header{};
   sys_proc_ro(candidate, header.data(), header.size());
 
@@ -571,11 +591,14 @@ bool try_extract_script_from_candidate(uint64_t candidate, std::string& out,
       out_layout->size_off = n_off;
       out_layout->cap_off  = c_off;
       out_layout->header_span = std::max<size_t>(0x40, std::max({d_off, n_off, c_off}) + 8);
+      MH_LOG("[extract.layout] found at data@0x%zx size@0x%zx cap@0x%zx ptr=%p len=%llu cap=%llu",
+             d_off, n_off, c_off, (void*)data_ptr,
+             static_cast<unsigned long long>(len), static_cast<unsigned long long>(cap));
     }
     return true;
   };
 
-  for (size_t base = 0; base + 24 <= 0x30; base += 8) {
+  for (size_t base = 0; base + 24 <= 0x80; base += 8) {
     if (try_pointer_and_length(base, base + 8, base + 16)) {
       return true;
     }
@@ -583,7 +606,10 @@ bool try_extract_script_from_candidate(uint64_t candidate, std::string& out,
 
   const size_t offsets[] = {0x18, 0x20, 0x28, 0x30, 0x38,
                             0x40, 0x48, 0x50, 0x58, 0x60,
-                            0x68, 0x70};
+                            0x68, 0x70, 0x78, 0x80, 0x88,
+                            0x90, 0x98, 0xa0, 0xa8, 0xb0,
+                            0xb8, 0xc0, 0xc8, 0xd0, 0xd8,
+                            0xe0, 0xe8, 0xf0};
   for (size_t off : offsets) {
     if (try_pointer_and_length(off, off + 8, off + 16)) {
       return true;
@@ -604,6 +630,35 @@ bool try_extract_script_from_candidate(uint64_t candidate, std::string& out,
   for (size_t off = 0; off + sizeof(uint64_t) <= header.size(); off += sizeof(uint64_t)) {
     uint64_t maybe_ptr = read_u64(off);
     if (read_remote_ascii(maybe_ptr, 2048, out)) {
+      MH_LOG("[extract.fallback] found string via pointer at offset 0x%zx -> %p len=%zu",
+             off, (void*)maybe_ptr, out.size());
+      if (out_layout && !out.empty()) {
+        // Assume this is a pointer at offset, try to infer the layout
+        // Check if there's size/cap following the pointer
+        if (off + 24 <= header.size()) {
+          uint64_t maybe_size = read_u64(off + 8);
+          uint64_t maybe_cap = read_u64(off + 16);
+          MH_LOG("[extract.fallback] checking layout: size=%llu cap=%llu (string_len=%zu)",
+                 static_cast<unsigned long long>(maybe_size),
+                 static_cast<unsigned long long>(maybe_cap),
+                 out.size());
+
+          // Accept if cap is reasonable, even if size is 0
+          // We'll use the actual string length we extracted
+          if (maybe_cap > 0 && maybe_cap <= (1ULL << 20) &&
+              (maybe_size == 0 || (maybe_size <= (1ULL << 20) && maybe_cap >= maybe_size))) {
+            out_layout->valid = true;
+            out_layout->data_off = off;
+            out_layout->size_off = off + 8;
+            out_layout->cap_off = off + 16;
+            out_layout->header_span = std::max<size_t>(0x40, off + 24);
+            MH_LOG("[extract.fallback] layout validated! data@0x%zx size@0x%zx cap@0x%zx (size_was_zero=%d)",
+                   off, off + 8, off + 16, maybe_size == 0 ? 1 : 0);
+          } else {
+            MH_LOG("[extract.fallback] layout validation failed");
+          }
+        }
+      }
       return true;
     }
   }
