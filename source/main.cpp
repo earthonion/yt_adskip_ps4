@@ -1,15 +1,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <stdio.h>
 #include <string>
 #include <vector>
 #include <memory>
 #include <array>
 #include <algorithm>
 
-#include <orbis/libkernel.h>      // sceKernelReadTsc
-#include <orbis/SysUtil.h>
+#include <orbis/libkernel.h>
 #include "mini_hook.h"
 #include "patch.h"
 #include "util.h"
@@ -51,29 +49,6 @@ void ensure_live_injection_budget() {
   }
 }
 
-void dump_script_blob(const std::string& script, bool is_external, uint64_t hash) {
-  if (script.empty()) {
-    return;
-  }
-
-  size_t total = script.size();
-  MH_LOG("[execute.dump] %s hash=%08llx len=%zu",
-         is_external ? "external" : "inline",
-         static_cast<unsigned long long>(hash & 0xffffffffu), total);
-
-  std::string preview;
-  constexpr size_t kPreviewLimit = 512;
-  size_t take = std::min(total, kPreviewLimit);
-  for (size_t i = 0; i < take; ++i) {
-    unsigned char c = static_cast<unsigned char>(script[i]);
-    preview.push_back((c >= 0x20 && c < 0x7F) ? char(c) : '.');
-  }
-  if (take < total) {
-    preview.append("\n/* truncated preview */\n");
-  }
-  MH_LOG("[execute.text] %s", preview.c_str());
-}
-
 }  // namespace
 
 extern void* __mh_tramp_slot_execute;
@@ -84,9 +59,8 @@ MH_DEFINE_THUNK(csp, my_BypassCsp)
 
 extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                                      char is_external) {
-  void* location = reinterpret_cast<void*>(arg3);
   MH_LOG("[execute.call] self=%p arg2=%p arg3=%p external=%d", self,
-         (void*)(static_cast<uintptr_t>(arg2)), location, is_external ? 1 : 0);
+         (void*)(static_cast<uintptr_t>(arg2)), (void*)arg3, is_external ? 1 : 0);
 
   if (g_direct_injection_done) {
     g_execute_reentry = true;
@@ -95,24 +69,13 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
     return;
   }
 
-  if (is_canonical_address(static_cast<uint64_t>(arg2))) {
-    log_memory_hexdump(reinterpret_cast<void*>(static_cast<uintptr_t>(arg2)), 0x80);
-  }
-  if (is_canonical_address(arg3)) {
-    log_memory_hexdump(reinterpret_cast<void*>(static_cast<uintptr_t>(arg3)), 0x40);
-  }
-
-  std::string active_script;
-  bool have_active = false;
   StringLikeLayout learned{};
-  uint64_t hash = 0;
+  std::string temp_script;
 
-  if (try_extract_script_from_candidate(static_cast<uint64_t>(arg2), active_script, &learned)) {
-    have_active = !active_script.empty();
-    MH_LOG("[extract] from arg2=%p learned.valid=%d len=%zu", (void*)static_cast<uintptr_t>(arg2), learned.valid ? 1 : 0, active_script.size());
-  } else if (try_extract_script_from_candidate(arg3, active_script, &learned)) {
-    have_active = !active_script.empty();
-    MH_LOG("[extract] from arg3=%p learned.valid=%d len=%zu", (void*)arg3, learned.valid ? 1 : 0, active_script.size());
+  if (try_extract_script_from_candidate(static_cast<uint64_t>(arg2), temp_script, &learned)) {
+    MH_LOG("[extract] from arg2=%p learned.valid=%d", (void*)static_cast<uintptr_t>(arg2), learned.valid ? 1 : 0);
+  } else if (try_extract_script_from_candidate(arg3, temp_script, &learned)) {
+    MH_LOG("[extract] from arg3=%p learned.valid=%d", (void*)arg3, learned.valid ? 1 : 0);
   }
 
   if (learned.valid) {
@@ -123,22 +86,6 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
     if (changed) {
       MH_LOG("[layout] data@+0x%zx size@+0x%zx cap@+0x%zx span=0x%zx",
              g_layout.data_off, g_layout.size_off, g_layout.cap_off, g_layout.header_span);
-    }
-  } else {
-    MH_LOG("[extract] no layout learned, g_layout.valid=%d", g_layout.valid ? 1 : 0);
-  }
-
-  if (!have_active && lookup_script_source(self, active_script)) {
-    have_active = true;
-  }
-
-  // Inject on ANY script (no trigger pattern check)
-
-  if (have_active && !active_script.empty()) {
-    log_preview_bounded(reinterpret_cast<const uint8_t*>(active_script.data()),
-                        active_script.size(), 96);
-    if (cache_script_source(self, active_script, &hash)) {
-      dump_script_blob(active_script, is_external, hash);
     }
   }
 
@@ -176,12 +123,7 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   StringLikeLayout layout = learned.valid ? learned : g_layout;
   if (!layout.valid) {
     std::string fallback_script;
-    if (try_extract_script_from_candidate(header_addr, fallback_script, &layout)) {
-      if (!have_active || active_script.empty()) {
-        active_script = fallback_script;
-        have_active = !active_script.empty();
-      }
-    }
+    try_extract_script_from_candidate(header_addr, fallback_script, &layout);
   }
 
   constexpr size_t kProbe = 0x80;
