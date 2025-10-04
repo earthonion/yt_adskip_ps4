@@ -2,6 +2,8 @@
 
 A GoldHEN plugin that injects JavaScript to skip ads on the PS4 YouTube Cobalt app.
 
+**Compatible with:** YouTube v02.32 from pkg-zone.com (CUSA01015)
+
 ## Features
 - Automatic ad skipping
 - Visual banner confirmation when loaded
