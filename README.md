@@ -28,25 +28,17 @@ A GoldHEN plugin that injects JavaScript to skip ads on the PS4 YouTube Cobalt a
    - Close and reopen the YouTube app
    - You should see a green "Ad skip enabled" banner appear briefly when the page loads
 
-## Troubleshooting
-
-If the plugin doesn't load:
-- Go to Settings > App Info and spam X until you get a dev mode prompt
-- Click "Yes" to refresh the page
-- Do it again to disable dev mode
-- If that doesn't work, close and reopen the app
 
 ## How it Works
 
 The plugin hooks into the YouTube Cobalt app's HTML script execution engine and injects custom JavaScript that:
 1. Detects when ads are playing
 2. Skips them by advancing the video to the end
-3. Shows a visual confirmation banner
 
 ## Technical Details
 
 - Hooks `HTMLScriptExecute` at address `0x0097fb40`
-- Bypasses CSP (Content Security Policy) restrictions
+- Bypasses CSP (Content Security Policy) restrictions //not working yet
 - Uses local buffer injection for stability
 - 3-second delay before execution to ensure page is ready
 
@@ -65,4 +57,4 @@ The compiled plugin will be in `bin/plugins/prx_final/test2.prx`
 
 ## Credits
 
-Built using the [GoldHEN Plugins SDK](https://github.com/GoldHEN/GoldHEN_Plugins_SDK)
+Built using the [GoldHEN Plugins SDK](https://github.com/GoldHEN/GoldHEN_Plugins_SDK) and [OpenOrbisToolchain](https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain)
