@@ -1,11 +1,66 @@
-# Cobalt PS4 JS Injector
+# YouTube Ad Block for PS4
 
-a plugin that injects ad block javascript into the cobalt app for ps4.
+A GoldHEN plugin that injects JavaScript to skip ads on the PS4 YouTube Cobalt app.
 
-note if it doesnt load go to settings>app info spam x until you get a dev mode prompt , click yes. this will refresh the page. do it again to disable it.
+## Features
+- Automatic ad skipping
+- Visual banner confirmation when loaded
+- Stable injection using local buffer approach
 
-if that doesn't work, close then reopen the app.
+## Installation
 
-the issue is that sometimes it Injects the js too soon. I'm working on this as well
+1. **Download the plugin**
+   - Download `yt_adblock.prx` from the [latest release](https://github.com/earthonion/cobalt-ps4-js-inject/releases)
 
-this is still a WIP. i plan on adding sponsorblock , but i think the main obstacle is the Content Security Policy. this prevents it from connecting to domains other than youtube and google.
+2. **Copy to PS4**
+   - Copy `yt_adblock.prx` to `/data/GoldHEN/plugins/` on your PS4
+
+3. **Configure GoldHEN**
+   - Edit `/data/GoldHEN/plugins.ini` to add the following:
+   ```ini
+   [CUSA01015]
+   /data/GoldHEN/plugins/yt_adblock.prx
+   ```
+
+4. **Restart YouTube**
+   - Close and reopen the YouTube app
+   - You should see a green "Ad skip enabled" banner appear briefly when the page loads
+
+## Troubleshooting
+
+If the plugin doesn't load:
+- Go to Settings > App Info and spam X until you get a dev mode prompt
+- Click "Yes" to refresh the page
+- Do it again to disable dev mode
+- If that doesn't work, close and reopen the app
+
+## How it Works
+
+The plugin hooks into the YouTube Cobalt app's HTML script execution engine and injects custom JavaScript that:
+1. Detects when ads are playing
+2. Skips them by advancing the video to the end
+3. Shows a visual confirmation banner
+
+## Technical Details
+
+- Hooks `HTMLScriptExecute` at address `0x0097fb40`
+- Bypasses CSP (Content Security Policy) restrictions
+- Uses local buffer injection for stability
+- 3-second delay before execution to ensure page is ready
+
+## Building from Source
+
+```bash
+cd plugin_src/test2
+make clean && make
+```
+
+The compiled plugin will be in `bin/plugins/prx_final/test2.prx`
+
+## Future Plans
+
+- Add SponsorBlock integration (pending CSP bypass solution)
+
+## Credits
+
+Built using the [GoldHEN Plugins SDK](https://github.com/GoldHEN/GoldHEN_Plugins_SDK)
