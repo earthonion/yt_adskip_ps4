@@ -11,6 +11,7 @@
 #include <orbis/Http.h>
 #include <orbis/Ssl.h>
 #include <orbis/Net.h>
+#include <sys/mman.h>
 #include "mini_hook.h"
 #include "patch.h"
 #include "util.h"
@@ -24,37 +25,29 @@ extern "C" void mh_log(const char* fmt, ...);
 #define MH_LOG(fmt, ...) ((void)0)
 #endif
 
-#define HTML_EXECUTE_ADDR 0x0097fb40
-#define BYPASS_CSP_ADDR   0x014100f0
-#define CSP_PARSE_ADDR    0x009e27c0
-#define CSP_DIRECTIVE_ADDR 0x009e36f0
-#define DOMAIN_WHITELIST_ADDR 0x00446be0
-#define STATUS_CHECK_ADDR 0x015bffa0
-#define XHR_INNER_CHECK_ADDR 0x00ab7180
+// Signature for HTMLScriptExecute function from Ghidra
+// 0097fb40: 55                    PUSH RBP
+// 0097fb41: 48 89 E5              MOV RBP,RSP
+// 0097fb44: 41 57                 PUSH R15
+// 0097fb46: 41 56                 PUSH R14
+// 0097fb48: 41 55                 PUSH R13
+// 0097fb4a: 41 54                 PUSH R12
+// 0097fb4c: 53                    PUSH RBX
+// 0097fb4d: 48 81 EC D8 00 00 00  SUB RSP,0xd8
+// 0097fb54: 49 89 D5              MOV R13,RDX
+// 0097fb57: 48 8B 15 ?? ?? ?? ??  MOV RDX,[stack_chk_guard] (wildcard)
+// 0097fb5e: 48 8B 02              MOV RAX,[RDX]
+// 0097fb61: 48 89 45 D0           MOV [RBP-0x30],RAX
+// 0097fb65: 80 BF 10 05 00 00 00  CMP byte ptr [RDI+0x510],0x0
+#define HTML_EXECUTE_SIG "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 81 EC D8 00 00 00 49 89 D5 48 8B 15 ?? ?? ?? ?? 48 8B 02 48 89 45 D0 80 BF 10 05 00 00 00"
+#define HTML_EXECUTE_SIG_OFFSET 0
+#define HTML_EXECUTE_ADDR_FALLBACK 0x0097fb40
 
 using ExecuteFn   = void (*)(void* self, long arg2, uint64_t arg3,
                              char is_external);
-using BypassCspFn = void (*)(long param_1);
-using CspParseFn = void (*)(long* param_1, long param_2, long param_3);
-using CspDirectiveFn = void (*)(uint64_t* param_1, uint64_t param_2, uint64_t param_3, long* param_4);
-using DomainWhitelistFn = uint64_t (*)(long param_1);
-using StatusCheckFn = uint32_t (*)(long param_1);
-using XhrInnerCheckFn = char (*)(uint64_t param_1, long* param_2);
 
 static mh_hook_t  g_execute_hook{};
-static mh_hook_t  g_csp_hook{};
-static mh_hook_t  g_csp_parse_hook{};
-static mh_hook_t  g_csp_directive_hook{};
-static mh_hook_t  g_domain_whitelist_hook{};
-static mh_hook_t  g_status_check_hook{};
-static mh_hook_t  g_xhr_inner_check_hook{};
 static ExecuteFn  g_real_Execute   = nullptr;
-static BypassCspFn g_real_BypassCsp = nullptr;
-static CspParseFn g_real_CspParse = nullptr;
-static CspDirectiveFn g_real_CspDirective = nullptr;
-static DomainWhitelistFn g_real_DomainWhitelist = nullptr;
-static StatusCheckFn g_real_StatusCheck = nullptr;
-static XhrInnerCheckFn g_real_XhrInnerCheck = nullptr;
 
 static thread_local bool g_execute_reentry = false;
 
@@ -80,21 +73,6 @@ void ensure_live_injection_budget() {
 
 extern void* __mh_tramp_slot_execute;
 MH_DEFINE_THUNK(execute, my_HTMLScriptExecute)
-
-extern void* __mh_tramp_slot_csp;
-MH_DEFINE_THUNK(csp, my_BypassCsp)
-
-extern void* __mh_tramp_slot_csp_parse;
-MH_DEFINE_THUNK(csp_parse, my_CspParse)
-
-extern void* __mh_tramp_slot_csp_directive;
-MH_DEFINE_THUNK(csp_directive, my_CspDirective)
-
-extern void* __mh_tramp_slot_domain_whitelist;
-MH_DEFINE_THUNK(domain_whitelist, my_DomainWhitelist)
-
-extern void* __mh_tramp_slot_xhr_inner_check;
-MH_DEFINE_THUNK(xhr_inner_check, my_XhrInnerCheck)
 
 extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                                      char is_external) {
@@ -226,87 +204,64 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   MH_LOG("[inject] direct call ok");
   return;
 }
-extern "C" void my_BypassCsp(long param_1) {
-  // Hook CSP event handler registration - do nothing to prevent CSP from being enforced
-  MH_LOG("[csp] CSP event handler registration blocked");
-  return;
-}
-
-extern "C" void my_CspParse(long* param_1, long param_2, long param_3) {
-  // Call original parser - we'll handle connect-src specifically in directive hook
-  g_real_CspParse(param_1, param_2, param_3);
-}
-
-extern "C" void my_CspDirective(uint64_t* param_1, uint64_t param_2, uint64_t param_3, long* param_4) {
-  // Check multiple possible offsets for connect-src
-  bool is_connect_src_1 = (param_4 == (long*)(param_1 + 0x10));
-  bool is_connect_src_2 = (param_4 == (long*)(param_1 + 0x02));
-  bool is_connect_src_3 = (param_4 == (long*)(param_1 + 0x08));
-
-  if (is_connect_src_1 || is_connect_src_2 || is_connect_src_3) {
-    MH_LOG("[csp-directive] SKIPPING connect-src (offset match: %d/%d/%d)",
-           is_connect_src_1, is_connect_src_2, is_connect_src_3);
-    return;  // Don't create the connect-src policy
-  }
-
-  // For other directives, call original
-  g_real_CspDirective(param_1, param_2, param_3, param_4);
-}
-
-extern "C" uint64_t my_DomainWhitelist(long param_1) {
-  static uint64_t cached_allowed_result = 0;
-
-  // Call original
-  uint64_t original_result = g_real_DomainWhitelist(param_1);
-
-  // If it's already allowed (non-zero), cache it and return it
-  if (original_result != 0) {
-    cached_allowed_result = original_result;
-    MH_LOG("[domain-whitelist] Allowed: %llu", (unsigned long long)original_result);
-    return original_result;
-  }
-
-  // If blocked (0) and we have a cached allowed result, use that
-  if (cached_allowed_result != 0) {
-    MH_LOG("[domain-whitelist] BLOCKED->Spoofing with cached: %llu",
-           (unsigned long long)cached_allowed_result);
-    return cached_allowed_result;
-  }
-
-  // No cached result yet, return original (will block but we'll get a cache soon)
-  MH_LOG("[domain-whitelist] Blocked (no cache yet)");
-  return original_result;
-}
-
-extern "C" char my_StatusCheck(long param_1) {
-  // Always return 1 to pass the status check
-  MH_LOG("[status-check] Forcing return 1");
-  return 1;
-}
-
-extern "C" char my_XhrInnerCheck(uint64_t param_1, long* param_2) {
-  // Call original security check first
-  if (!g_real_XhrInnerCheck) {
-    return 1;  // Fallback if not initialized
-  }
-
-  char result = g_real_XhrInnerCheck(param_1, param_2);
-
-  // If original allows it, return that
-  if (result == 1) {
-    return result;
-  }
-
-  // Original blocked it - override to allow (for SponsorBlock API)
-  // No logging - called too frequently
-  return 1;
-}
 
 extern "C" s32 attr_public plugin_load(s32, const char**) {
   int r = 0;
 
+  // Get main module info
+  OrbisKernelModuleInfo moduleInfo;
+  memset(&moduleInfo, 0, sizeof(moduleInfo));
+  moduleInfo.size = sizeof(moduleInfo);
+
+  OrbisKernelModule handles[256];
+  size_t numModules;
+  r = sceKernelGetModuleList(handles, sizeof(handles), &numModules);
+  if (r != 0) {
+    MH_LOG("sceKernelGetModuleList failed: 0x%08X", r);
+    return -1;
+  }
+
+  uint64_t module_base = 0;
+  uint32_t module_size = 0;
+
+  // Get first module (main executable) - need to find the TEXT segment
+  if (numModules > 0) {
+    r = sceKernelGetModuleInfo(handles[0], &moduleInfo);
+    if (r == 0) {
+      mh_log("[minihook] Module: %s\n", moduleInfo.name);
+      for (int seg = 0; seg < 4; seg++) {
+        if (moduleInfo.segmentInfo[seg].address) {
+          mh_log("[minihook]   Segment %d: addr=0x%lx size=0x%x prot=0x%x\n",
+                 seg,
+                 (uint64_t)moduleInfo.segmentInfo[seg].address,
+                 moduleInfo.segmentInfo[seg].size,
+                 moduleInfo.segmentInfo[seg].prot);
+        }
+      }
+      // Use first segment (should be TEXT segment with executable code)
+      module_base = (uint64_t)moduleInfo.segmentInfo[0].address;
+      module_size = moduleInfo.segmentInfo[0].size;
+    }
+  }
+
+  // Find HTMLScriptExecute using pattern scan
+  uint64_t html_execute_addr = 0;
+  if (module_base && module_size) {
+    uint8_t* found = pattern_scan(module_base, module_size, HTML_EXECUTE_SIG);
+    if (found) {
+      html_execute_addr = (uint64_t)found + HTML_EXECUTE_SIG_OFFSET;
+      mh_log("[minihook] HTMLScriptExecute found at 0x%lx\n", html_execute_addr);
+    } else {
+      mh_log("[minihook] Pattern scan failed, using fallback address 0x%lx\n", HTML_EXECUTE_ADDR_FALLBACK);
+      html_execute_addr = HTML_EXECUTE_ADDR_FALLBACK;
+    }
+  } else {
+    mh_log("[minihook] Failed to get module info, using fallback address 0x%lx\n", HTML_EXECUTE_ADDR_FALLBACK);
+    html_execute_addr = HTML_EXECUTE_ADDR_FALLBACK;
+  }
+
   std::memset(&g_execute_hook, 0, sizeof(g_execute_hook));
-  g_execute_hook.target_addr = HTML_EXECUTE_ADDR;
+  g_execute_hook.target_addr = html_execute_addr;
   g_execute_hook.user_impl   = (void*)my_HTMLScriptExecute;
   g_execute_hook.user_thunk  = (void*)MH_THUNK_ENTRY(execute);
 
@@ -320,107 +275,7 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
   g_real_Execute = (ExecuteFn)g_execute_hook.orig_fn;
   MH_LOG("[hook] Execute installed. orig=%p tramp=%p target=%p",
          (void*)g_real_Execute, g_execute_hook.tramp_mem,
-         (void*)HTML_EXECUTE_ADDR);
-
-  std::memset(&g_csp_hook, 0, sizeof(g_csp_hook));
-  g_csp_hook.target_addr = BYPASS_CSP_ADDR;
-  g_csp_hook.user_impl   = (void*)my_BypassCsp;
-  g_csp_hook.user_thunk  = (void*)MH_THUNK_ENTRY(csp);
-
-  r = mh_install(&g_csp_hook);
-  if (r) {
-    MH_LOG("[hook] BypassCSP install FAILED %d", r);
-    mh_remove(&g_execute_hook);
-    g_real_Execute = nullptr;
-    return r;
-  }
-  mh_bind_thunk_slot(&__mh_tramp_slot_csp, g_csp_hook.tramp_mem);
-  g_real_BypassCsp = (BypassCspFn)g_csp_hook.orig_fn;
-  MH_LOG("[hook] BypassCSP installed. orig=%p tramp=%p target=%p",
-         (void*)g_real_BypassCsp, g_csp_hook.tramp_mem,
-         (void*)BYPASS_CSP_ADDR);
-
-  std::memset(&g_csp_parse_hook, 0, sizeof(g_csp_parse_hook));
-  g_csp_parse_hook.target_addr = CSP_PARSE_ADDR;
-  g_csp_parse_hook.user_impl   = (void*)my_CspParse;
-  g_csp_parse_hook.user_thunk  = (void*)MH_THUNK_ENTRY(csp_parse);
-
-  r = mh_install(&g_csp_parse_hook);
-  if (r) {
-    MH_LOG("[hook] CspParse install FAILED %d", r);
-    mh_remove(&g_csp_hook);
-    g_real_BypassCsp = nullptr;
-    mh_remove(&g_execute_hook);
-    g_real_Execute = nullptr;
-    return r;
-  }
-  mh_bind_thunk_slot(&__mh_tramp_slot_csp_parse, g_csp_parse_hook.tramp_mem);
-  g_real_CspParse = (CspParseFn)g_csp_parse_hook.orig_fn;
-  MH_LOG("[hook] CspParse installed. orig=%p tramp=%p target=%p",
-         (void*)g_real_CspParse, g_csp_parse_hook.tramp_mem,
-         (void*)CSP_PARSE_ADDR);
-
-  std::memset(&g_csp_directive_hook, 0, sizeof(g_csp_directive_hook));
-  g_csp_directive_hook.target_addr = CSP_DIRECTIVE_ADDR;
-  g_csp_directive_hook.user_impl   = (void*)my_CspDirective;
-  g_csp_directive_hook.user_thunk  = (void*)MH_THUNK_ENTRY(csp_directive);
-
-  r = mh_install(&g_csp_directive_hook);
-  if (r) {
-    MH_LOG("[hook] CspDirective install FAILED %d", r);
-    mh_remove(&g_csp_parse_hook);
-    g_real_CspParse = nullptr;
-    mh_remove(&g_csp_hook);
-    g_real_BypassCsp = nullptr;
-    mh_remove(&g_execute_hook);
-    g_real_Execute = nullptr;
-    return r;
-  }
-  mh_bind_thunk_slot(&__mh_tramp_slot_csp_directive, g_csp_directive_hook.tramp_mem);
-  g_real_CspDirective = (CspDirectiveFn)g_csp_directive_hook.orig_fn;
-  MH_LOG("[hook] CspDirective installed. orig=%p tramp=%p target=%p",
-         (void*)g_real_CspDirective, g_csp_directive_hook.tramp_mem,
-         (void*)CSP_DIRECTIVE_ADDR);
-
-  std::memset(&g_domain_whitelist_hook, 0, sizeof(g_domain_whitelist_hook));
-  g_domain_whitelist_hook.target_addr = DOMAIN_WHITELIST_ADDR;
-  g_domain_whitelist_hook.user_impl   = (void*)my_DomainWhitelist;
-  g_domain_whitelist_hook.user_thunk  = (void*)MH_THUNK_ENTRY(domain_whitelist);
-
-  r = mh_install(&g_domain_whitelist_hook);
-  if (r) {
-    MH_LOG("[hook] DomainWhitelist install FAILED %d", r);
-    mh_remove(&g_csp_directive_hook);
-    g_real_CspDirective = nullptr;
-    mh_remove(&g_csp_parse_hook);
-    g_real_CspParse = nullptr;
-    mh_remove(&g_csp_hook);
-    g_real_BypassCsp = nullptr;
-    mh_remove(&g_execute_hook);
-    g_real_Execute = nullptr;
-    return r;
-  }
-  mh_bind_thunk_slot(&__mh_tramp_slot_domain_whitelist, g_domain_whitelist_hook.tramp_mem);
-  g_real_DomainWhitelist = (DomainWhitelistFn)g_domain_whitelist_hook.orig_fn;
-  MH_LOG("[hook] DomainWhitelist installed. orig=%p tramp=%p target=%p",
-         (void*)g_real_DomainWhitelist, g_domain_whitelist_hook.tramp_mem,
-         (void*)DOMAIN_WHITELIST_ADDR);
-
-  // Install status check hook in wrapper mode (no trampoline needed)
-  std::memset(&g_status_check_hook, 0, sizeof(g_status_check_hook));
-  g_status_check_hook.target_addr = STATUS_CHECK_ADDR;
-  g_status_check_hook.user_impl   = (void*)my_StatusCheck;
-  g_status_check_hook.user_thunk  = nullptr;  // Wrapper mode
-
-  r = mh_install(&g_status_check_hook);
-  if (r) {
-    MH_LOG("[hook] StatusCheck install FAILED %d", r);
-  } else {
-    MH_LOG("[hook] StatusCheck installed (wrapper mode)");
-  }
-
-  // XHR inner check hook disabled - too invasive, causes crashes
-  // The domain whitelist + CSP hooks should be sufficient for SponsorBlock
+         (void*)html_execute_addr);
 
   // Start SponsorBlock proxy server
   if (!start_sponsorblock_proxy()) {
@@ -437,18 +292,6 @@ extern "C" s32 attr_public plugin_unload(s32, const char**) {
 
   mh_remove(&g_execute_hook);
   g_real_Execute = nullptr;
-  mh_remove(&g_csp_hook);
-  g_real_BypassCsp = nullptr;
-  mh_remove(&g_csp_parse_hook);
-  g_real_CspParse = nullptr;
-  mh_remove(&g_csp_directive_hook);
-  g_real_CspDirective = nullptr;
-  mh_remove(&g_domain_whitelist_hook);
-  g_real_DomainWhitelist = nullptr;
-  mh_remove(&g_status_check_hook);
-  g_real_StatusCheck = nullptr;
-  mh_remove(&g_xhr_inner_check_hook);
-  g_real_XhrInnerCheck = nullptr;
 
   clear_script_cache();
   clear_context_tracking();

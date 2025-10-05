@@ -222,6 +222,70 @@ void clear_context_tracking() {
   // Empty stub - kept for API compatibility
 }
 
+static uint32_t pattern_to_byte(const char* pattern, uint8_t* bytes) {
+  uint32_t count = 0;
+  const char* start = pattern;
+  const char* end = pattern + strlen(pattern);
+
+  for (const char* current = start; current < end; ++current) {
+    if (*current == '?') {
+      ++current;
+      if (*current == '?') {
+        ++current;
+      }
+      bytes[count++] = 0xff;
+    } else {
+      bytes[count++] = strtoul(current, (char**)&current, 16);
+    }
+  }
+  return count;
+}
+
+uint8_t* pattern_scan(uint64_t module_base, uint32_t module_size, const char* signature) {
+  if (!module_base || !module_size) {
+    return nullptr;
+  }
+
+  constexpr uint32_t MAX_PATTERN_LENGTH = 256;
+  uint8_t patternBytes[MAX_PATTERN_LENGTH] = {0};
+  int32_t patternLength = pattern_to_byte(signature, patternBytes);
+
+  if (!patternLength || patternLength >= MAX_PATTERN_LENGTH) {
+    MH_LOG("Pattern length too large or invalid! %d", patternLength);
+    return nullptr;
+  }
+
+  mh_log("[pattern_scan] Scanning module base=0x%lx size=0x%x pattern_len=%d\n",
+         module_base, module_size, patternLength);
+  mh_log("[pattern_scan] First 16 pattern bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+         patternBytes[0], patternBytes[1], patternBytes[2], patternBytes[3],
+         patternBytes[4], patternBytes[5], patternBytes[6], patternBytes[7],
+         patternBytes[8], patternBytes[9], patternBytes[10], patternBytes[11],
+         patternBytes[12], patternBytes[13], patternBytes[14], patternBytes[15]);
+
+  uint8_t* scanBytes = (uint8_t*)module_base;
+
+  for (uint64_t i = 0; i < module_size; ++i) {
+    bool found = true;
+    for (int32_t j = 0; j < patternLength; ++j) {
+      if (scanBytes[i + j] != patternBytes[j] && patternBytes[j] != 0xff) {
+        found = false;
+        break;
+      }
+    }
+    if (found) {
+      mh_log("[pattern_scan] Match found at offset 0x%lx (addr 0x%lx)\n", i, module_base + i);
+      mh_log("[pattern_scan] First 16 bytes at match: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+             scanBytes[i], scanBytes[i+1], scanBytes[i+2], scanBytes[i+3],
+             scanBytes[i+4], scanBytes[i+5], scanBytes[i+6], scanBytes[i+7],
+             scanBytes[i+8], scanBytes[i+9], scanBytes[i+10], scanBytes[i+11],
+             scanBytes[i+12], scanBytes[i+13], scanBytes[i+14], scanBytes[i+15]);
+      return &scanBytes[i];
+    }
+  }
+  return nullptr;
+}
+
 bool try_extract_script_from_candidate(uint64_t candidate, std::string& out,
                                        StringLikeLayout* out_layout) {
   out.clear();
