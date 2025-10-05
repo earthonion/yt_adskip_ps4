@@ -1,11 +1,12 @@
 # Library metadata.
 
 DEBUG_FLAGS = -D__FINAL__=1
-LOG_TYPE = -D__USE_PRINTF__
+LOG_TYPE =
 BUILD_TYPE = _final
 
 ifeq ($(DEBUG),1)
     DEBUG_FLAGS = -D__FINAL__=0
+    LOG_TYPE = -D__DEBUG_LOG__=1
     BUILD_TYPE = _debug
 endif
 
@@ -18,7 +19,7 @@ TARGET_ELF   := $(BUILD_FOLDER)/elf$(TYPE)/$(OUTPUT_PRX)
 TARGETSTUB   := $(OUTPUT_PRX).so
 
 # Libraries linked into the ELF.
-LIBS := -lSceLibcInternal -lGoldHEN_Hook -lkernel -lSceSysmodule -lc++ -lc -lSceSysUtil
+LIBS := -lSceLibcInternal -lGoldHEN_Hook -lkernel -lSceSysmodule -lc++ -lc -lSceSysUtil -lSceHttp -lSceSsl -lSceNet
 
 EXTRAFLAGS := $(DEBUG_FLAGS) $(LOG_TYPE) -fcolor-diagnostics -Wall -D__PRX_BUILD__
 

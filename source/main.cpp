@@ -8,25 +8,53 @@
 #include <algorithm>
 
 #include <orbis/libkernel.h>
+#include <orbis/Http.h>
+#include <orbis/Ssl.h>
+#include <orbis/Net.h>
 #include "mini_hook.h"
 #include "patch.h"
 #include "util.h"
+#include "proxy.h"
 
 extern "C" void mh_log(const char* fmt, ...);
 
+#ifdef __DEBUG_LOG__
 #define MH_LOG(fmt, ...) mh_log("[minihook] " fmt "\n", ##__VA_ARGS__)
+#else
+#define MH_LOG(fmt, ...) ((void)0)
+#endif
 
 #define HTML_EXECUTE_ADDR 0x0097fb40
-#define BYPASS_CSP_ADDR   0x00479720
+#define BYPASS_CSP_ADDR   0x014100f0
+#define CSP_PARSE_ADDR    0x009e27c0
+#define CSP_DIRECTIVE_ADDR 0x009e36f0
+#define DOMAIN_WHITELIST_ADDR 0x00446be0
+#define STATUS_CHECK_ADDR 0x015bffa0
+#define XHR_INNER_CHECK_ADDR 0x00ab7180
 
 using ExecuteFn   = void (*)(void* self, long arg2, uint64_t arg3,
                              char is_external);
-using BypassCspFn = long (*)(void* param_1,ulong param_2,long param_3,ulong param_4,int param_5);
+using BypassCspFn = void (*)(long param_1);
+using CspParseFn = void (*)(long* param_1, long param_2, long param_3);
+using CspDirectiveFn = void (*)(uint64_t* param_1, uint64_t param_2, uint64_t param_3, long* param_4);
+using DomainWhitelistFn = uint64_t (*)(long param_1);
+using StatusCheckFn = uint32_t (*)(long param_1);
+using XhrInnerCheckFn = char (*)(uint64_t param_1, long* param_2);
 
 static mh_hook_t  g_execute_hook{};
 static mh_hook_t  g_csp_hook{};
+static mh_hook_t  g_csp_parse_hook{};
+static mh_hook_t  g_csp_directive_hook{};
+static mh_hook_t  g_domain_whitelist_hook{};
+static mh_hook_t  g_status_check_hook{};
+static mh_hook_t  g_xhr_inner_check_hook{};
 static ExecuteFn  g_real_Execute   = nullptr;
 static BypassCspFn g_real_BypassCsp = nullptr;
+static CspParseFn g_real_CspParse = nullptr;
+static CspDirectiveFn g_real_CspDirective = nullptr;
+static DomainWhitelistFn g_real_DomainWhitelist = nullptr;
+static StatusCheckFn g_real_StatusCheck = nullptr;
+static XhrInnerCheckFn g_real_XhrInnerCheck = nullptr;
 
 static thread_local bool g_execute_reentry = false;
 
@@ -55,6 +83,18 @@ MH_DEFINE_THUNK(execute, my_HTMLScriptExecute)
 
 extern void* __mh_tramp_slot_csp;
 MH_DEFINE_THUNK(csp, my_BypassCsp)
+
+extern void* __mh_tramp_slot_csp_parse;
+MH_DEFINE_THUNK(csp_parse, my_CspParse)
+
+extern void* __mh_tramp_slot_csp_directive;
+MH_DEFINE_THUNK(csp_directive, my_CspDirective)
+
+extern void* __mh_tramp_slot_domain_whitelist;
+MH_DEFINE_THUNK(domain_whitelist, my_DomainWhitelist)
+
+extern void* __mh_tramp_slot_xhr_inner_check;
+MH_DEFINE_THUNK(xhr_inner_check, my_XhrInnerCheck)
 
 extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                                      char is_external) {
@@ -179,14 +219,86 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   g_real_Execute(self,
                  static_cast<long>(reinterpret_cast<uintptr_t>(cloned_header)),
                  arg3,
-                 is_external);
+                 0);  // Force is_external=0 to mark as trusted/internal script
   g_execute_reentry = false;
   g_direct_injection_done = true;
   MH_LOG("[inject.exec] mode=direct");
   MH_LOG("[inject] direct call ok");
   return;
 }
-extern "C" long my_BypassCsp(void* param_1,ulong param_2,long param_3,ulong param_4,int param_5) {
+extern "C" void my_BypassCsp(long param_1) {
+  // Hook CSP event handler registration - do nothing to prevent CSP from being enforced
+  MH_LOG("[csp] CSP event handler registration blocked");
+  return;
+}
+
+extern "C" void my_CspParse(long* param_1, long param_2, long param_3) {
+  // Call original parser - we'll handle connect-src specifically in directive hook
+  g_real_CspParse(param_1, param_2, param_3);
+}
+
+extern "C" void my_CspDirective(uint64_t* param_1, uint64_t param_2, uint64_t param_3, long* param_4) {
+  // Check multiple possible offsets for connect-src
+  bool is_connect_src_1 = (param_4 == (long*)(param_1 + 0x10));
+  bool is_connect_src_2 = (param_4 == (long*)(param_1 + 0x02));
+  bool is_connect_src_3 = (param_4 == (long*)(param_1 + 0x08));
+
+  if (is_connect_src_1 || is_connect_src_2 || is_connect_src_3) {
+    MH_LOG("[csp-directive] SKIPPING connect-src (offset match: %d/%d/%d)",
+           is_connect_src_1, is_connect_src_2, is_connect_src_3);
+    return;  // Don't create the connect-src policy
+  }
+
+  // For other directives, call original
+  g_real_CspDirective(param_1, param_2, param_3, param_4);
+}
+
+extern "C" uint64_t my_DomainWhitelist(long param_1) {
+  static uint64_t cached_allowed_result = 0;
+
+  // Call original
+  uint64_t original_result = g_real_DomainWhitelist(param_1);
+
+  // If it's already allowed (non-zero), cache it and return it
+  if (original_result != 0) {
+    cached_allowed_result = original_result;
+    MH_LOG("[domain-whitelist] Allowed: %llu", (unsigned long long)original_result);
+    return original_result;
+  }
+
+  // If blocked (0) and we have a cached allowed result, use that
+  if (cached_allowed_result != 0) {
+    MH_LOG("[domain-whitelist] BLOCKED->Spoofing with cached: %llu",
+           (unsigned long long)cached_allowed_result);
+    return cached_allowed_result;
+  }
+
+  // No cached result yet, return original (will block but we'll get a cache soon)
+  MH_LOG("[domain-whitelist] Blocked (no cache yet)");
+  return original_result;
+}
+
+extern "C" char my_StatusCheck(long param_1) {
+  // Always return 1 to pass the status check
+  MH_LOG("[status-check] Forcing return 1");
+  return 1;
+}
+
+extern "C" char my_XhrInnerCheck(uint64_t param_1, long* param_2) {
+  // Call original security check first
+  if (!g_real_XhrInnerCheck) {
+    return 1;  // Fallback if not initialized
+  }
+
+  char result = g_real_XhrInnerCheck(param_1, param_2);
+
+  // If original allows it, return that
+  if (result == 1) {
+    return result;
+  }
+
+  // Original blocked it - override to allow (for SponsorBlock API)
+  // No logging - called too frequently
   return 1;
 }
 
@@ -228,15 +340,115 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
          (void*)g_real_BypassCsp, g_csp_hook.tramp_mem,
          (void*)BYPASS_CSP_ADDR);
 
+  std::memset(&g_csp_parse_hook, 0, sizeof(g_csp_parse_hook));
+  g_csp_parse_hook.target_addr = CSP_PARSE_ADDR;
+  g_csp_parse_hook.user_impl   = (void*)my_CspParse;
+  g_csp_parse_hook.user_thunk  = (void*)MH_THUNK_ENTRY(csp_parse);
+
+  r = mh_install(&g_csp_parse_hook);
+  if (r) {
+    MH_LOG("[hook] CspParse install FAILED %d", r);
+    mh_remove(&g_csp_hook);
+    g_real_BypassCsp = nullptr;
+    mh_remove(&g_execute_hook);
+    g_real_Execute = nullptr;
+    return r;
+  }
+  mh_bind_thunk_slot(&__mh_tramp_slot_csp_parse, g_csp_parse_hook.tramp_mem);
+  g_real_CspParse = (CspParseFn)g_csp_parse_hook.orig_fn;
+  MH_LOG("[hook] CspParse installed. orig=%p tramp=%p target=%p",
+         (void*)g_real_CspParse, g_csp_parse_hook.tramp_mem,
+         (void*)CSP_PARSE_ADDR);
+
+  std::memset(&g_csp_directive_hook, 0, sizeof(g_csp_directive_hook));
+  g_csp_directive_hook.target_addr = CSP_DIRECTIVE_ADDR;
+  g_csp_directive_hook.user_impl   = (void*)my_CspDirective;
+  g_csp_directive_hook.user_thunk  = (void*)MH_THUNK_ENTRY(csp_directive);
+
+  r = mh_install(&g_csp_directive_hook);
+  if (r) {
+    MH_LOG("[hook] CspDirective install FAILED %d", r);
+    mh_remove(&g_csp_parse_hook);
+    g_real_CspParse = nullptr;
+    mh_remove(&g_csp_hook);
+    g_real_BypassCsp = nullptr;
+    mh_remove(&g_execute_hook);
+    g_real_Execute = nullptr;
+    return r;
+  }
+  mh_bind_thunk_slot(&__mh_tramp_slot_csp_directive, g_csp_directive_hook.tramp_mem);
+  g_real_CspDirective = (CspDirectiveFn)g_csp_directive_hook.orig_fn;
+  MH_LOG("[hook] CspDirective installed. orig=%p tramp=%p target=%p",
+         (void*)g_real_CspDirective, g_csp_directive_hook.tramp_mem,
+         (void*)CSP_DIRECTIVE_ADDR);
+
+  std::memset(&g_domain_whitelist_hook, 0, sizeof(g_domain_whitelist_hook));
+  g_domain_whitelist_hook.target_addr = DOMAIN_WHITELIST_ADDR;
+  g_domain_whitelist_hook.user_impl   = (void*)my_DomainWhitelist;
+  g_domain_whitelist_hook.user_thunk  = (void*)MH_THUNK_ENTRY(domain_whitelist);
+
+  r = mh_install(&g_domain_whitelist_hook);
+  if (r) {
+    MH_LOG("[hook] DomainWhitelist install FAILED %d", r);
+    mh_remove(&g_csp_directive_hook);
+    g_real_CspDirective = nullptr;
+    mh_remove(&g_csp_parse_hook);
+    g_real_CspParse = nullptr;
+    mh_remove(&g_csp_hook);
+    g_real_BypassCsp = nullptr;
+    mh_remove(&g_execute_hook);
+    g_real_Execute = nullptr;
+    return r;
+  }
+  mh_bind_thunk_slot(&__mh_tramp_slot_domain_whitelist, g_domain_whitelist_hook.tramp_mem);
+  g_real_DomainWhitelist = (DomainWhitelistFn)g_domain_whitelist_hook.orig_fn;
+  MH_LOG("[hook] DomainWhitelist installed. orig=%p tramp=%p target=%p",
+         (void*)g_real_DomainWhitelist, g_domain_whitelist_hook.tramp_mem,
+         (void*)DOMAIN_WHITELIST_ADDR);
+
+  // Install status check hook in wrapper mode (no trampoline needed)
+  std::memset(&g_status_check_hook, 0, sizeof(g_status_check_hook));
+  g_status_check_hook.target_addr = STATUS_CHECK_ADDR;
+  g_status_check_hook.user_impl   = (void*)my_StatusCheck;
+  g_status_check_hook.user_thunk  = nullptr;  // Wrapper mode
+
+  r = mh_install(&g_status_check_hook);
+  if (r) {
+    MH_LOG("[hook] StatusCheck install FAILED %d", r);
+  } else {
+    MH_LOG("[hook] StatusCheck installed (wrapper mode)");
+  }
+
+  // XHR inner check hook disabled - too invasive, causes crashes
+  // The domain whitelist + CSP hooks should be sufficient for SponsorBlock
+
+  // Start SponsorBlock proxy server
+  if (!start_sponsorblock_proxy()) {
+    MH_LOG("[proxy] Failed to start SponsorBlock proxy");
+  }
+
   g_direct_injection_done = false;
   return 0;
 }
 
 extern "C" s32 attr_public plugin_unload(s32, const char**) {
+  // Stop proxy server
+  stop_sponsorblock_proxy();
+
   mh_remove(&g_execute_hook);
   g_real_Execute = nullptr;
   mh_remove(&g_csp_hook);
   g_real_BypassCsp = nullptr;
+  mh_remove(&g_csp_parse_hook);
+  g_real_CspParse = nullptr;
+  mh_remove(&g_csp_directive_hook);
+  g_real_CspDirective = nullptr;
+  mh_remove(&g_domain_whitelist_hook);
+  g_real_DomainWhitelist = nullptr;
+  mh_remove(&g_status_check_hook);
+  g_real_StatusCheck = nullptr;
+  mh_remove(&g_xhr_inner_check_hook);
+  g_real_XhrInnerCheck = nullptr;
 
   clear_script_cache();
   clear_context_tracking();
