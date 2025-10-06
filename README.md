@@ -1,5 +1,7 @@
 # YouTube Ad Block + SponsorBlock for PS4
 
+having issues? let me know on discord! https://discord.gg/NNUMHrfmUM
+
 A GoldHEN plugin that skips ads and sponsored segments on the PS4 YouTube Cobalt app.
 
 **Compatible with:** YouTube v02.32 from pkg-zone.com (CUSA01015)
