@@ -67,11 +67,13 @@ int mh_install(mh_hook_t *h) {
     memcpy(h->original, (void *)h->target_addr, stolen);
 
     // 3) Allocate executable trampoline page
+    // NOTE: On PPPwn, must use address hint in library space (not 0)
     void *tramp = NULL;
-    int ret = sceKernelMmap(0, 4096, PROT_READ | PROT_WRITE | PROT_EXEC,
-                            0x1000 | 0x2, -1, 0, &tramp); // MAP_PRIVATE|MAP_ANON
-    if (ret != 0 || !tramp) {
-        mh_log("[mini_hook] mmap trampoline failed: 0x%X\n", ret);
+    void *addr_hint = (void*)0x0000000900000000ULL;
+    int ret = sceKernelMmap(addr_hint, 4096, PROT_READ | PROT_WRITE | PROT_EXEC,
+                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, &tramp);
+    if (ret < 0 || !tramp) {
+        mh_log("[mini_hook] sceKernelMmap failed: ret=0x%X tramp=%p\n", ret, tramp);
         return -3;
     }
     h->tramp_mem = tramp;
@@ -83,8 +85,17 @@ int mh_install(mh_hook_t *h) {
     uint64_t return_addr = (uint64_t)(h->target_addr + stolen);
     emit_abs_jmp_stub(tramp_buf + stolen, return_addr);
 
-    sys_proc_rw((uintptr_t)tramp, tramp_buf, stolen + 14);
+    // Write to trampoline
+    memcpy(tramp, tramp_buf, stolen + 14);
     h->tramp_size = stolen + 14;
+
+    // CRITICAL: On PPPwn, mmap doesn't properly set execute permissions
+    // even when PROT_EXEC is specified. Must call mprotect explicitly.
+    if (mprotect(tramp, 4096, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
+        mh_log("[mini_hook] mprotect failed to set RWX!\n");
+        sceKernelMunmap(tramp, 4096);
+        return -4;
+    }
 
     // 5) Decide patch entry point:
     //    - Thunk mode: entry = user_thunk (assembly thunk does pre-work, tail-jumps to tramp)
