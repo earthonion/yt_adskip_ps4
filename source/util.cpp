@@ -7,6 +7,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <orbis/libkernel.h>
 
 extern "C" void mh_log(const char* fmt, ...);
 
@@ -78,6 +80,29 @@ bool ensure_js_payload_loaded() {
     return true;
   }
 
+  // Try to load from /data/youtube/inject.js first
+  int fd = sceKernelOpen("/data/youtube/inject.js", 0x0000, 0);
+  if (fd >= 0) {
+    // Get file size
+    OrbisKernelStat st;
+    if (sceKernelFstat(fd, &st) == 0 && st.st_size > 0 && st.st_size < (1024 * 1024)) {
+      // Read file content
+      std::vector<char> file_buffer(st.st_size + 1, 0);
+      ssize_t bytes_read = sceKernelRead(fd, file_buffer.data(), st.st_size);
+      sceKernelClose(fd);
+
+      if (bytes_read > 0) {
+        g_js_payload.assign(file_buffer.data(), bytes_read);
+        g_js_payload_loaded = true;
+        MH_LOG("[execute.inject] loaded from /data/youtube/inject.js (%zu bytes)", g_js_payload.size());
+        return true;
+      }
+    }
+    sceKernelClose(fd);
+  }
+
+  // Fall back to hardcoded JavaScript
+  MH_LOG("[execute.inject] /data/youtube/inject.js not found, using hardcoded payload");
   static const char kHardcodedJs[] =
       "(function(){\n"
       "  if (window.__MH_SPONSORBLOCK_LOADED) { return; }\n"
