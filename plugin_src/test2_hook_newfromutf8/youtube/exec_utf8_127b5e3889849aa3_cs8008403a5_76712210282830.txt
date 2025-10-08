@@ -1,0 +1,1 @@
+Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'sha256-5MCMFYmwJ2yLXZjpzYcCR9r1CDV+S9P7RbAkIo6LrNo='".

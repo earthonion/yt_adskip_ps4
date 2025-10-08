@@ -1,0 +1,7 @@
+1026
+[[0,["c","70B6F7870C6926E9","",8]]
+,[1,["S","m4fkMGAlTidsvksDf4SgmZYdW6bhRI49qEcDnrhrh6Q"]]
+,[2,["loungeStatus",{"devices":"[{\"app\":\"lb-v4\",\"capabilities\":\"dsp,dpa,mic,ntb,vsp,ads,pas,dcn,dcp,drq,isg,els,sads,que,mus\",\"clientName\":\"tvhtml5\",\"experiments\":\"\",\"name\":\"Sony PS4\",\"theme\":\"cl\",\"id\":\"89cf0d01-2f14-4274-a7a7-71c9d8d71668\",\"type\":\"LOUNGE_SCREEN\",\"hasCc\":\"true\",\"deviceInfo\":\"{\\\"brand\\\":\\\"Sony\\\",\\\"model\\\":\\\"PS4\\\",\\\"year\\\":2013,\\\"os\\\":\\\"PlayStation 4\\\",\\\"osVersion\\\":\\\"\\\",\\\"chipset\\\":\\\"JaguarBased\\\",\\\"clientName\\\":\\\"TVHTML5\\\",\\\"dialAdditionalDataSupportLevel\\\":\\\"full\\\",\\\"mdxDialServerType\\\":\\\"MDX_DIAL_SERVER_TYPE_IN_APP\\\",\\\"hasIdentityDifferentFromCurrent\\\":false,\\\"switchableIdentitiesSuffix\\\":\\\"\\\"}\",\"receiverIdentityMatchStatus\":\"IS_RECEIVER\"}]","connectionEventDetails":"{\"deviceId\":\"89cf0d01-2f14-4274-a7a7-71c9d8d71668\"}"}]]
+,[3,["getNowPlaying"]]
+,[4,["getDiscoveryDeviceId"]]
+]

@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS4 Mini Hook Library Tutorial</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-code: #1c2128;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-accent: #58a6ff;
+            --text-success: #3fb950;
+            --text-warning: #f0883e;
+            --text-danger: #f85149;
+            --border-color: #30363d;
+            --code-keyword: #ff7b72;
+            --code-string: #a5d6ff;
+            --code-comment: #8b949e;
+            --code-function: #d2a8ff;
+            --code-number: #79c0ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--text-accent);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: var(--text-success);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-left: 4px solid var(--text-success);
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: var(--text-warning);
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        .important {
+            background-color: var(--bg-tertiary);
+            border-left: 4px solid var(--text-warning);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background-color: rgba(248, 81, 73, 0.1);
+            border-left: 4px solid var(--text-danger);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background-color: rgba(63, 185, 80, 0.1);
+            border-left: 4px solid var(--text-success);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background-color: var(--bg-code);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+            color: var(--text-accent);
+        }
+
+        pre {
+            background-color: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: var(--text-primary);
+            display: block;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .code-header {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            padding: 8px 15px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: -1px;
+            margin-top: 20px;
+        }
+
+        pre.with-header {
+            border-radius: 0 0 6px 6px;
+            margin-top: 0;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .toc {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+            border: none;
+            padding: 0;
+            font-size: 1.3em;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc a {
+            color: var(--text-accent);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+
+        .step-number {
+            display: inline-block;
+            background-color: var(--text-accent);
+            color: var(--bg-primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .api-section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .api-function {
+            margin-bottom: 25px;
+        }
+
+        .api-function h4 {
+            color: var(--code-function);
+            font-family: monospace;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .api-params {
+            background-color: var(--bg-tertiary);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th {
+            background-color: var(--bg-secondary);
+            color: var(--text-accent);
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .highlight-keyword { color: var(--code-keyword); }
+        .highlight-string { color: var(--code-string); }
+        .highlight-comment { color: var(--code-comment); }
+        .highlight-function { color: var(--code-function); }
+        .highlight-number { color: var(--code-number); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 PS4 Mini Hook Library Tutorial</h1>
+        
+        <div class="toc">
+            <h2>📚 Table of Contents</h2>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#architecture">Architecture & Components</a></li>
+                <li><a href="#quick-start">Quick Start Guide</a></li>
+                <li><a href="#api-reference">API Reference</a></li>
+                <li><a href="#examples">Complete Examples</a></li>
+                <li><a href="#advanced">Advanced Topics</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ul>
+        </div>
+
+        <h2 id="overview">📖 Overview</h2>
+        <p>
+            The Mini Hook Library is a lightweight function hooking system designed for PS4 GoldHEN plugins. 
+            It allows you to intercept and modify function calls at runtime using inline hooking techniques.
+        </p>
+        
+        <div class="important">
+            <strong>Key Features:</strong>
+            <ul>
+                <li>Minimal overhead inline hooking</li>
+                <li>x86-64 instruction boundary detection using HDE64</li>
+                <li>Automatic trampoline generation</li>
+                <li>Type-safe function pointer preservation</li>
+                <li>Clean install/remove semantics</li>
+            </ul>
+        </div>
+
+        <h2 id="architecture">🏗️ Architecture & Components</h2>
+        
+        <h3>Core Components</h3>
+        
+        <div class="api-section">
+            <h4>1. Hook Structure (<code>mh_hook_t</code>)</h4>
+            <p>The central data structure that manages hook state:</p>
+            
+            <div class="code-header">mini_hook.h - Hook Structure</div>
+            <pre class="with-header"><code><span class="highlight-keyword">typedef struct</span> mh_hook {
+    <span class="highlight-comment">// Target function information</span>
+    <span class="highlight-keyword">uintptr_t</span>      target_addr;                 <span class="highlight-comment">// Address to hook</span>
+    <span class="highlight-keyword">size_t</span>         stolen_len;                  <span class="highlight-comment">// Bytes stolen from prologue</span>
+    <span class="highlight-keyword">uint8_t</span>        original[MH_MAX_PROLOGUE];   <span class="highlight-comment">// Saved original bytes</span>
+    
+    <span class="highlight-comment">// Trampoline memory (executable)</span>
+    <span class="highlight-keyword">void</span>          *tramp_mem;                   <span class="highlight-comment">// Allocated trampoline</span>
+    <span class="highlight-keyword">size_t</span>         tramp_size;                  <span class="highlight-comment">// Size of trampoline</span>
+    
+    <span class="highlight-comment">// User-provided components</span>
+    <span class="highlight-keyword">void</span>          *user_thunk;                  <span class="highlight-comment">// ASM thunk entry point</span>
+    <span class="highlight-keyword">void</span>          *user_impl;                   <span class="highlight-comment">// Your C callback</span>
+    <span class="highlight-keyword">void</span>          *orig_fn;                     <span class="highlight-comment">// Callable original function</span>
+    
+    <span class="highlight-keyword">bool</span>           installed;                   <span class="highlight-comment">// Hook active flag</span>
+} mh_hook_t;</code></pre>
+        </div>
+
+        <h3>How It Works</h3>
+        
+        <ol>
+            <li><span class="step-number">1</span><strong>Prologue Analysis:</strong> Uses HDE64 to find safe instruction boundaries</li>
+            <li><span class="step-number">2</span><strong>Trampoline Creation:</strong> Builds executable code to call original function</li>
+            <li><span class="step-number">3</span><strong>Hook Installation:</strong> Patches target with jump to your callback</li>
+            <li><span class="step-number">4</span><strong>Callback Execution:</strong> Your code runs, can call original via trampoline</li>
+        </ol>
+
+        <h2 id="quick-start">🚀 Quick Start Guide</h2>
+        
+        <h3>Step 1: Include Headers</h3>
+        
+        <div class="code-header">main.cpp</div>
+        <pre class="with-header"><code><span class="highlight-keyword">#include</span> <span class="highlight-string">"mini_hook.h"</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">"plugin_common.h"</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">"utils.h"</span></code></pre>
+
+        <h3>Step 2: Define Function Signatures</h3>
+        
+        <div class="code-header">Define the original function type and your callback</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Original function signature</span>
+<span class="highlight-keyword">typedef long</span> (*<span class="highlight-function">playback_control_t</span>)(<span class="highlight-keyword">long</span> p1, <span class="highlight-keyword">char</span> *cmd, <span class="highlight-keyword">int</span> p3, <span class="highlight-keyword">int</span> size);
+
+<span class="highlight-comment">// Your callback function</span>
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">long</span> <span class="highlight-function">my_playback_callback</span>(<span class="highlight-keyword">long</span> p1, <span class="highlight-keyword">char</span> *cmd, <span class="highlight-keyword">int</span> p3, <span class="highlight-keyword">int</span> size);</code></pre>
+
+        <h3>Step 3: Create Hook and Thunk</h3>
+        
+        <div class="code-header">Setting up the hook infrastructure</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Global hook object</span>
+<span class="highlight-keyword">static</span> mh_hook_t g_playback_hook = {<span class="highlight-number">0</span>};
+
+<span class="highlight-comment">// Generate ASM thunk (macro creates the assembly bridge)</span>
+<span class="highlight-function">MH_DEFINE_THUNK</span>(playback, my_playback_callback)
+
+<span class="highlight-comment">// External reference to the trampoline slot</span>
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_playback;</code></pre>
+
+        <h3>Step 4: Implement Your Callback</h3>
+        
+        <div class="code-header">Callback implementation with original function call</div>
+        <pre class="with-header"><code><span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">long</span> <span class="highlight-function">my_playback_callback</span>(<span class="highlight-keyword">long</span> p1, <span class="highlight-keyword">char</span> *cmd, <span class="highlight-keyword">int</span> p3, <span class="highlight-keyword">int</span> size) {
+    <span class="highlight-comment">// Pre-processing: Log or modify parameters</span>
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Intercepted call: p1=0x%lX, cmd=%p, size=%d\n"</span>, p1, cmd, size);
+    
+    <span class="highlight-comment">// Optional: Examine or modify the command</span>
+    <span class="highlight-keyword">if</span> (cmd && size > <span class="highlight-number">0</span>) {
+        <span class="highlight-comment">// Inspect command data</span>
+        <span class="highlight-function">dump_command</span>(cmd, size);
+        
+        <span class="highlight-comment">// Example: Block certain commands</span>
+        <span class="highlight-keyword">if</span> (<span class="highlight-function">strstr</span>(cmd, <span class="highlight-string">"dangerous_cmd"</span>)) {
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Blocking dangerous command!\n"</span>);
+            <span class="highlight-keyword">return</span> <span class="highlight-number">-1</span>; <span class="highlight-comment">// Return error without calling original</span>
+        }
+    }
+    
+    <span class="highlight-comment">// Call the original function via trampoline</span>
+    playback_control_t original = (playback_control_t)g_playback_hook.orig_fn;
+    <span class="highlight-keyword">long</span> result = <span class="highlight-function">original</span>(p1, cmd, p3, size);
+    
+    <span class="highlight-comment">// Post-processing: Log or modify return value</span>
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Original returned: 0x%lX\n"</span>, result);
+    
+    <span class="highlight-comment">// Example: Force success return</span>
+    <span class="highlight-keyword">if</span> (result < <span class="highlight-number">0</span>) {
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Overriding error return to success\n"</span>);
+        result = <span class="highlight-number">0</span>;
+    }
+    
+    <span class="highlight-keyword">return</span> result;
+}</code></pre>
+
+        <h3>Step 5: Install the Hook</h3>
+        
+        <div class="code-header">Installation in plugin_load</div>
+        <pre class="with-header"><code><span class="highlight-keyword">s32</span> attr_public <span class="highlight-function">plugin_load</span>(<span class="highlight-keyword">s32</span> argc, <span class="highlight-keyword">const char</span>* argv[]) {
+    <span class="highlight-comment">// 1. Get module base address</span>
+    <span class="highlight-keyword">uint64_t</span> module_base = <span class="highlight-number">0</span>;
+    <span class="highlight-keyword">uint32_t</span> module_size = <span class="highlight-number">0</span>;
+    OrbisKernelModuleInfo mi;
+    mi.size = <span class="highlight-keyword">sizeof</span>(mi);
+    
+    <span class="highlight-keyword">if</span> (!<span class="highlight-function">get_module_info</span>(mi, <span class="highlight-string">"eboot.bin"</span>, &module_base, &module_size)) {
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[ERROR] Failed to get module info\n"</span>);
+        <span class="highlight-keyword">return</span> <span class="highlight-number">-1</span>;
+    }
+    
+    <span class="highlight-comment">// 2. Calculate target address (base + offset)</span>
+    <span class="highlight-keyword">#define</span> TARGET_OFFSET <span class="highlight-number">0x6B73C4</span>  <span class="highlight-comment">// Your function offset</span>
+    
+    <span class="highlight-comment">// 3. Setup hook structure</span>
+    <span class="highlight-function">memset</span>(&g_playback_hook, <span class="highlight-number">0</span>, <span class="highlight-keyword">sizeof</span>(g_playback_hook));
+    g_playback_hook.target_addr = module_base + TARGET_OFFSET;
+    g_playback_hook.user_impl   = (<span class="highlight-keyword">void</span>*)my_playback_callback;
+    g_playback_hook.user_thunk  = (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(playback);
+    
+    <span class="highlight-comment">// 4. Install the hook</span>
+    <span class="highlight-keyword">int</span> result = <span class="highlight-function">mh_install</span>(&g_playback_hook);
+    <span class="highlight-keyword">if</span> (result != <span class="highlight-number">0</span>) {
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[ERROR] Hook installation failed: %d\n"</span>, result);
+        <span class="highlight-keyword">return</span> result;
+    }
+    
+    <span class="highlight-comment">// 5. Bind the thunk slot to the trampoline</span>
+    <span class="highlight-function">mh_bind_thunk_slot</span>(&__mh_tramp_slot_playback, g_playback_hook.orig_fn);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[SUCCESS] Hook installed at 0x%lX\n"</span>, g_playback_hook.target_addr);
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}</code></pre>
+
+        <h3>Step 6: Clean Up</h3>
+        
+        <div class="code-header">Removing hooks in plugin_unload</div>
+        <pre class="with-header"><code><span class="highlight-keyword">s32</span> attr_public <span class="highlight-function">plugin_unload</span>(<span class="highlight-keyword">s32</span> argc, <span class="highlight-keyword">const char</span>* argv[]) {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[INFO] Unloading plugin...\n"</span>);
+    
+    <span class="highlight-comment">// Remove the hook (restores original bytes)</span>
+    <span class="highlight-function">mh_remove</span>(&g_playback_hook);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[INFO] Plugin unloaded successfully\n"</span>);
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}</code></pre>
+
+        <h2 id="api-reference">📘 API Reference</h2>
+        
+        <div class="api-section">
+            <div class="api-function">
+                <h4>size_t mh_calc_prologue_len(uintptr_t addr, size_t min_size)</h4>
+                <p>Calculates safe instruction boundary for hooking.</p>
+                <div class="api-params">
+                    <strong>Parameters:</strong>
+                    <ul>
+                        <li><code>addr</code> - Target function address</li>
+                        <li><code>min_size</code> - Minimum bytes needed (usually 14 for absolute jump)</li>
+                    </ul>
+                    <strong>Returns:</strong> Total size of complete instructions, or 0 on error
+                </div>
+            </div>
+
+            <div class="api-function">
+                <h4>int mh_install(mh_hook_t *hook)</h4>
+                <p>Installs a hook at the target address.</p>
+                <div class="api-params">
+                    <strong>Parameters:</strong>
+                    <ul>
+                        <li><code>hook</code> - Initialized hook structure</li>
+                    </ul>
+                    <strong>Returns:</strong> 0 on success, negative error code on failure
+                </div>
+            </div>
+
+            <div class="api-function">
+                <h4>int mh_remove(mh_hook_t *hook)</h4>
+                <p>Removes an installed hook and restores original code.</p>
+                <div class="api-params">
+                    <strong>Parameters:</strong>
+                    <ul>
+                        <li><code>hook</code> - Previously installed hook</li>
+                    </ul>
+                    <strong>Returns:</strong> 0 on success
+                </div>
+            </div>
+
+            <div class="api-function">
+                <h4>void mh_bind_thunk_slot(void **slot_addr, void *trampoline)</h4>
+                <p>Binds the thunk's trampoline slot to the actual trampoline address.</p>
+                <div class="api-params">
+                    <strong>Parameters:</strong>
+                    <ul>
+                        <li><code>slot_addr</code> - Address of the thunk's slot variable</li>
+                        <li><code>trampoline</code> - Trampoline address (usually hook->orig_fn)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="api-function">
+                <h4>MH_DEFINE_THUNK(name, callback)</h4>
+                <p>Macro that generates assembly thunk and slot for a hook.</p>
+                <div class="api-params">
+                    <strong>Parameters:</strong>
+                    <ul>
+                        <li><code>name</code> - Unique identifier for this thunk</li>
+                        <li><code>callback</code> - Your C callback function name</li>
+                    </ul>
+                    <strong>Generates:</strong>
+                    <ul>
+                        <li><code>__mh_thunk_name</code> - Assembly thunk function</li>
+                        <li><code>__mh_tramp_slot_name</code> - Trampoline pointer storage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 id="examples">💡 Complete Examples</h2>
+        
+        <h3>Complete Working Example: Full Plugin Implementation</h3>
+        
+        <div class="important">
+            <strong>📝 Complete main.cpp - Ready to compile and use</strong>
+            <p>This is a fully functional plugin that hooks a game function. Simply replace the TARGET_OFFSET with your function's offset.</p>
+        </div>
+        
+        <div class="code-header">main.cpp - Complete working plugin</div>
+        <pre class="with-header"><code><span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Complete Hook Plugin Example</span>
+<span class="highlight-comment">// This is a fully functional plugin ready to compile</span>
+<span class="highlight-comment">//==============================================================================</span>
+
+<span class="highlight-keyword">#include</span> <span class="highlight-string">"plugin_common.h"</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">"utils.h"</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">"mini_hook.h"</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">&lt;orbis/libkernel.h&gt;</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">&lt;stdarg.h&gt;</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">&lt;stdio.h&gt;</span>
+<span class="highlight-keyword">#include</span> <span class="highlight-string">&lt;string.h&gt;</span>
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Configuration - CHANGE THIS TO YOUR TARGET FUNCTION</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">#define</span> TARGET_OFFSET <span class="highlight-number">0x6B73C4</span>  <span class="highlight-comment">// Replace with your function offset</span>
+<span class="highlight-keyword">#define</span> TARGET_NAME <span class="highlight-string">"game_function"</span>
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Plugin Metadata</span>
+<span class="highlight-comment">//==============================================================================</span>
+attr_public <span class="highlight-keyword">const char</span> *g_pluginName = <span class="highlight-string">"My_Hook_Plugin"</span>;
+attr_public <span class="highlight-keyword">const char</span> *g_pluginDesc = <span class="highlight-string">"Hooks and monitors a game function"</span>;
+attr_public <span class="highlight-keyword">const char</span> *g_pluginAuth = <span class="highlight-string">"YourName"</span>;
+attr_public <span class="highlight-keyword">u32</span> g_pluginVersion = <span class="highlight-number">0x00000100</span>; <span class="highlight-comment">// Version 1.0</span>
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Step 1: Define the function signature you're hooking</span>
+<span class="highlight-comment">// Adjust parameters to match your target function</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">typedef long</span> (*<span class="highlight-function">target_function_t</span>)(<span class="highlight-keyword">long</span> param1, <span class="highlight-keyword">char</span> *data, <span class="highlight-keyword">int</span> param3, <span class="highlight-keyword">int</span> size);
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Step 2: Declare your callback function</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">long</span> my_hook_callback(<span class="highlight-keyword">long</span> param1, <span class="highlight-keyword">char</span> *data, <span class="highlight-keyword">int</span> param3, <span class="highlight-keyword">int</span> size);
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Step 3: Create global hook object and thunk</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">static</span> mh_hook_t g_my_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK</span>(my_hook, my_hook_callback)  <span class="highlight-comment">// Generates ASM thunk</span>
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_my_hook;       <span class="highlight-comment">// Trampoline slot reference</span>
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Step 4: Implement your callback - this runs when hooked function is called</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">long</span> <span class="highlight-function">my_hook_callback</span>(<span class="highlight-keyword">long</span> param1, <span class="highlight-keyword">char</span> *data, <span class="highlight-keyword">int</span> param3, <span class="highlight-keyword">int</span> size) {
+    <span class="highlight-comment">// Log the function call (visible in debug output)</span>
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] %s called: param1=0x%lX, data=%p, param3=%d, size=%d\n"</span>, 
+           TARGET_NAME, param1, data, param3, size);
+    
+    <span class="highlight-comment">// Optional: Examine the data being passed</span>
+    <span class="highlight-keyword">if</span> (data && size > <span class="highlight-number">0</span>) {
+        <span class="highlight-comment">// Log first few bytes of data as hex</span>
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Data preview: "</span>);
+        <span class="highlight-keyword">for</span> (<span class="highlight-keyword">int</span> i = <span class="highlight-number">0</span>; i < size && i < <span class="highlight-number">16</span>; i++) {
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"%02X "</span>, (<span class="highlight-keyword">unsigned char</span>)data[i]);
+        }
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"\n"</span>);
+        
+        <span class="highlight-comment">// Log as string if it looks like text</span>
+        <span class="highlight-keyword">if</span> (data[<span class="highlight-number">0</span>] >= <span class="highlight-number">32</span> && data[<span class="highlight-number">0</span>] < <span class="highlight-number">127</span>) {
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  As text: \"%.32s\"\n"</span>, data);
+        }
+    }
+    
+    <span class="highlight-comment">// Call the original function (IMPORTANT: preserves normal behavior)</span>
+    target_function_t original = (target_function_t)g_my_hook.orig_fn;
+    <span class="highlight-keyword">long</span> result = <span class="highlight-function">original</span>(param1, data, param3, size);
+    
+    <span class="highlight-comment">// Log the return value</span>
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] %s returned: 0x%lX\n"</span>, TARGET_NAME, result);
+    
+    <span class="highlight-comment">// Optional: Modify return value</span>
+    <span class="highlight-comment">// if (result < 0) {</span>
+    <span class="highlight-comment">//     mh_log("[HOOK] Changing error %ld to success\n", result);</span>
+    <span class="highlight-comment">//     result = 0;</span>
+    <span class="highlight-comment">// }</span>
+    
+    <span class="highlight-keyword">return</span> result;
+}
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Helper function for logging</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">void</span> <span class="highlight-function">log_info</span>(<span class="highlight-keyword">const char</span>* format, ...) {
+    <span class="highlight-keyword">char</span> buffer[<span class="highlight-number">1024</span>];
+    va_list args;
+    <span class="highlight-function">va_start</span>(args, format);
+    <span class="highlight-function">vsnprintf</span>(buffer, <span class="highlight-keyword">sizeof</span>(buffer), format, args);
+    <span class="highlight-function">va_end</span>(args);
+    <span class="highlight-function">sceKernelDebugOutText</span>(<span class="highlight-number">0</span>, buffer);
+}
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Plugin entry point - called when plugin loads</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> {
+
+<span class="highlight-keyword">s32</span> attr_public <span class="highlight-function">plugin_load</span>(<span class="highlight-keyword">s32</span> argc, <span class="highlight-keyword">const char</span>* argv[]) {
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Loading %s v%X.%02X\n"</span>, 
+             g_pluginName, g_pluginVersion >> <span class="highlight-number">8</span>, g_pluginVersion & <span class="highlight-number">0xFF</span>);
+    
+    <span class="highlight-comment">// Step 1: Get the base address of the game executable</span>
+    <span class="highlight-keyword">uint64_t</span> module_base = <span class="highlight-number">0</span>;
+    <span class="highlight-keyword">uint32_t</span> module_size = <span class="highlight-number">0</span>;
+    OrbisKernelModuleInfo mi;
+    mi.size = <span class="highlight-keyword">sizeof</span>(mi);
+    
+    <span class="highlight-keyword">if</span> (!<span class="highlight-function">get_module_info</span>(mi, <span class="highlight-string">"eboot.bin"</span>, &module_base, &module_size)) {
+        <span class="highlight-function">log_info</span>(<span class="highlight-string">"[ERROR] Failed to find eboot.bin module\n"</span>);
+        <span class="highlight-keyword">return</span> <span class="highlight-number">-1</span>;
+    }
+    
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Found eboot at base: 0x%lX, size: 0x%X\n"</span>, 
+             module_base, module_size);
+    
+    <span class="highlight-comment">// Step 2: Initialize the hook structure</span>
+    <span class="highlight-function">memset</span>(&g_my_hook, <span class="highlight-number">0</span>, <span class="highlight-keyword">sizeof</span>(g_my_hook));
+    g_my_hook.target_addr = module_base + TARGET_OFFSET;
+    g_my_hook.user_impl   = (<span class="highlight-keyword">void</span>*)my_hook_callback;
+    g_my_hook.user_thunk  = (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(my_hook);
+    
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Target function at: 0x%lX\n"</span>, g_my_hook.target_addr);
+    
+    <span class="highlight-comment">// Step 3: Install the hook</span>
+    <span class="highlight-keyword">int</span> result = <span class="highlight-function">mh_install</span>(&g_my_hook);
+    <span class="highlight-keyword">if</span> (result != <span class="highlight-number">0</span>) {
+        <span class="highlight-function">log_info</span>(<span class="highlight-string">"[ERROR] Hook installation failed with code: %d\n"</span>, result);
+        <span class="highlight-keyword">return</span> result;
+    }
+    
+    <span class="highlight-comment">// Step 4: Bind the thunk slot to the trampoline</span>
+    <span class="highlight-function">mh_bind_thunk_slot</span>(&__mh_tramp_slot_my_hook, g_my_hook.orig_fn);
+    
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[SUCCESS] Hook installed successfully!\n"</span>);
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"  - Target: 0x%lX\n"</span>, g_my_hook.target_addr);
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"  - Thunk:  %p\n"</span>, g_my_hook.user_thunk);
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"  - Tramp:  %p\n"</span>, g_my_hook.orig_fn);
+    
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Plugin exit point - called when plugin unloads</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">s32</span> attr_public <span class="highlight-function">plugin_unload</span>(<span class="highlight-keyword">s32</span> argc, <span class="highlight-keyword">const char</span>* argv[]) {
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Unloading %s\n"</span>, g_pluginName);
+    
+    <span class="highlight-comment">// Remove the hook (restores original function)</span>
+    <span class="highlight-keyword">if</span> (g_my_hook.installed) {
+        <span class="highlight-function">mh_remove</span>(&g_my_hook);
+        <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Hook removed successfully\n"</span>);
+    }
+    
+    <span class="highlight-function">log_info</span>(<span class="highlight-string">"[PLUGIN] Unloaded successfully\n"</span>);
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}
+
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-comment">// Required module functions</span>
+<span class="highlight-comment">//==============================================================================</span>
+<span class="highlight-keyword">s32</span> attr_module_hidden <span class="highlight-function">module_start</span>(<span class="highlight-keyword">s64</span> argc, <span class="highlight-keyword">const void</span> *args) {
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}
+
+<span class="highlight-keyword">s32</span> attr_module_hidden <span class="highlight-function">module_stop</span>(<span class="highlight-keyword">s64</span> argc, <span class="highlight-keyword">const void</span> *args) {
+    <span class="highlight-keyword">return</span> <span class="highlight-number">0</span>;
+}
+
+} <span class="highlight-comment">// extern "C"</span></code></pre>
+
+        <div class="success">
+            <strong>✅ How to use this example:</strong>
+            <ol>
+                <li>Copy this entire code into your main.cpp</li>
+                <li>Find your target function's offset (e.g., using a debugger or pattern scanner)</li>
+                <li>Replace <code>TARGET_OFFSET</code> with your function's offset</li>
+                <li>Adjust the <code>target_function_t</code> typedef to match your function's signature</li>
+                <li>Modify the callback parameters to match</li>
+                <li>Compile with your build system</li>
+            </ol>
+        </div>
+
+        <h3>Example 1: Simple Function Logger</h3>
+        
+        <div class="code-header">Log all calls to a function</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Target: int process_data(void *data, size_t len)</span>
+<span class="highlight-keyword">typedef int</span> (*<span class="highlight-function">process_data_t</span>)(<span class="highlight-keyword">void</span> *data, <span class="highlight-keyword">size_t</span> len);
+
+<span class="highlight-keyword">static</span> mh_hook_t g_process_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK</span>(process, process_callback)
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_process;
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">int</span> <span class="highlight-function">process_callback</span>(<span class="highlight-keyword">void</span> *data, <span class="highlight-keyword">size_t</span> len) {
+    <span class="highlight-keyword">static int</span> call_count = <span class="highlight-number">0</span>;
+    call_count++;
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[LOG] process_data call #%d: data=%p, len=%zu\n"</span>, 
+           call_count, data, len);
+    
+    <span class="highlight-comment">// Call original</span>
+    process_data_t original = (process_data_t)g_process_hook.orig_fn;
+    <span class="highlight-keyword">int</span> result = <span class="highlight-function">original</span>(data, len);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[LOG] process_data returned: %d\n"</span>, result);
+    <span class="highlight-keyword">return</span> result;
+}</code></pre>
+
+        <h3>Example 2: Parameter Modification</h3>
+        
+        <div class="code-header">Modify function parameters before calling original</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Target: void set_volume(float volume)</span>
+<span class="highlight-keyword">typedef void</span> (*<span class="highlight-function">set_volume_t</span>)(<span class="highlight-keyword">float</span> volume);
+
+<span class="highlight-keyword">static</span> mh_hook_t g_volume_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK</span>(volume, volume_callback)
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_volume;
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">void</span> <span class="highlight-function">volume_callback</span>(<span class="highlight-keyword">float</span> volume) {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[VOLUME] Original request: %.2f\n"</span>, volume);
+    
+    <span class="highlight-comment">// Limit volume to 50%</span>
+    <span class="highlight-keyword">if</span> (volume > <span class="highlight-number">0.5f</span>) {
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[VOLUME] Capping volume to 50%%\n"</span>);
+        volume = <span class="highlight-number">0.5f</span>;
+    }
+    
+    <span class="highlight-comment">// Call original with modified parameter</span>
+    set_volume_t original = (set_volume_t)g_volume_hook.orig_fn;
+    <span class="highlight-function">original</span>(volume);
+}</code></pre>
+
+        <h3>Example 3: Conditional Bypass</h3>
+        
+        <div class="code-header">Conditionally skip original function</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Target: bool check_license(const char *key)</span>
+<span class="highlight-keyword">typedef bool</span> (*<span class="highlight-function">check_license_t</span>)(<span class="highlight-keyword">const char</span> *key);
+
+<span class="highlight-keyword">static</span> mh_hook_t g_license_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK</span>(license, license_callback)
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_license;
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">bool</span> <span class="highlight-function">license_callback</span>(<span class="highlight-keyword">const char</span> *key) {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[LICENSE] Check requested for key: %s\n"</span>, key ? key : <span class="highlight-string">"(null)"</span>);
+    
+    <span class="highlight-comment">// Debug mode: always return true</span>
+    <span class="highlight-keyword">#ifdef</span> DEBUG_MODE
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[LICENSE] Debug mode - bypassing check\n"</span>);
+        <span class="highlight-keyword">return true</span>;
+    <span class="highlight-keyword">#endif</span>
+    
+    <span class="highlight-comment">// Production: call original</span>
+    check_license_t original = (check_license_t)g_license_hook.orig_fn;
+    <span class="highlight-keyword">bool</span> result = <span class="highlight-function">original</span>(key);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[LICENSE] Original returned: %s\n"</span>, result ? <span class="highlight-string">"valid"</span> : <span class="highlight-string">"invalid"</span>);
+    <span class="highlight-keyword">return</span> result;
+}</code></pre>
+
+        <h3>Example 4: Multiple Hooks</h3>
+        
+        <div class="code-header">Managing multiple simultaneous hooks</div>
+        <pre class="with-header"><code><span class="highlight-keyword">typedef struct</span> {
+    mh_hook_t hook;
+    <span class="highlight-keyword">const char</span> *name;
+    <span class="highlight-keyword">uint64_t</span> offset;
+    <span class="highlight-keyword">void</span> *thunk;
+    <span class="highlight-keyword">void</span> *callback;
+    <span class="highlight-keyword">void</span> **slot;
+} hook_entry_t;
+
+<span class="highlight-comment">// Define multiple hooks</span>
+<span class="highlight-keyword">static</span> mh_hook_t g_hook1 = {<span class="highlight-number">0</span>}, g_hook2 = {<span class="highlight-number">0</span>}, g_hook3 = {<span class="highlight-number">0</span>};
+
+<span class="highlight-function">MH_DEFINE_THUNK</span>(func1, callback1)
+<span class="highlight-function">MH_DEFINE_THUNK</span>(func2, callback2)
+<span class="highlight-function">MH_DEFINE_THUNK</span>(func3, callback3)
+
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_func1;
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_func2;
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_func3;
+
+<span class="highlight-keyword">static</span> hook_entry_t hooks[] = {
+    { g_hook1, <span class="highlight-string">"Function1"</span>, <span class="highlight-number">0x123456</span>, (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(func1), (<span class="highlight-keyword">void</span>*)callback1, &__mh_tramp_slot_func1 },
+    { g_hook2, <span class="highlight-string">"Function2"</span>, <span class="highlight-number">0x234567</span>, (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(func2), (<span class="highlight-keyword">void</span>*)callback2, &__mh_tramp_slot_func2 },
+    { g_hook3, <span class="highlight-string">"Function3"</span>, <span class="highlight-number">0x345678</span>, (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(func3), (<span class="highlight-keyword">void</span>*)callback3, &__mh_tramp_slot_func3 },
+};
+
+<span class="highlight-keyword">void</span> <span class="highlight-function">install_all_hooks</span>(<span class="highlight-keyword">uint64_t</span> base) {
+    <span class="highlight-keyword">for</span> (<span class="highlight-keyword">int</span> i = <span class="highlight-number">0</span>; i < <span class="highlight-keyword">sizeof</span>(hooks)/<span class="highlight-keyword">sizeof</span>(hooks[<span class="highlight-number">0</span>]); i++) {
+        hook_entry_t *entry = &hooks[i];
+        
+        entry->hook.target_addr = base + entry->offset;
+        entry->hook.user_thunk = entry->thunk;
+        entry->hook.user_impl = entry->callback;
+        
+        <span class="highlight-keyword">if</span> (<span class="highlight-function">mh_install</span>(&entry->hook) == <span class="highlight-number">0</span>) {
+            <span class="highlight-function">mh_bind_thunk_slot</span>(entry->slot, entry->hook.orig_fn);
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[✓] Hooked %s at 0x%lX\n"</span>, entry->name, entry->hook.target_addr);
+        } <span class="highlight-keyword">else</span> {
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[✗] Failed to hook %s\n"</span>, entry->name);
+        }
+    }
+}</code></pre>
+
+        <h2 id="advanced">🔧 Advanced Topics</h2>
+        
+        <h3>Function Argument Limits</h3>
+        
+        <div class="warning">
+            <strong>⚠️ Important: Argument Passing Limitations</strong>
+            <p>The default thunk macro supports up to 6 register-based arguments (standard x86-64 calling convention):</p>
+            <ul>
+                <li>1st arg: RDI</li>
+                <li>2nd arg: RSI</li>
+                <li>3rd arg: RDX</li>
+                <li>4th arg: RCX</li>
+                <li>5th arg: R8</li>
+                <li>6th arg: R9</li>
+            </ul>
+            <p>If your target function has more than 6 arguments (uses stack-based parameters), you'll need to modify the thunk to handle stack arguments.</p>
+        </div>
+        
+        <div class="code-header">Example: Function with 6 arguments (standard thunk)</div>
+        <pre class="with-header"><code><span class="highlight-comment">// This works with the standard thunk (supports up to 6 args)</span>
+<span class="highlight-keyword">typedef int</span> (*<span class="highlight-function">complex_func_t</span>)(
+    <span class="highlight-keyword">void</span> *ptr1,     <span class="highlight-comment">// RDI</span>
+    <span class="highlight-keyword">size_t</span> size,    <span class="highlight-comment">// RSI</span>
+    <span class="highlight-keyword">int</span> flags,      <span class="highlight-comment">// RDX</span>
+    <span class="highlight-keyword">char</span> *buffer,   <span class="highlight-comment">// RCX</span>
+    <span class="highlight-keyword">long</span> offset,    <span class="highlight-comment">// R8</span>
+    <span class="highlight-keyword">int</span> mode        <span class="highlight-comment">// R9</span>
+);
+
+<span class="highlight-keyword">static</span> mh_hook_t g_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK</span>(complex, complex_callback)  <span class="highlight-comment">// Standard thunk for ≤6 args</span>
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">int</span> <span class="highlight-function">complex_callback</span>(<span class="highlight-keyword">void</span> *ptr1, <span class="highlight-keyword">size_t</span> size, <span class="highlight-keyword">int</span> flags, 
+                                  <span class="highlight-keyword">char</span> *buffer, <span class="highlight-keyword">long</span> offset, <span class="highlight-keyword">int</span> mode) {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] All 6 args: %p, %zu, %d, %p, %ld, %d\n"</span>,
+           ptr1, size, flags, buffer, offset, mode);
+    
+    complex_func_t original = (complex_func_t)g_hook.orig_fn;
+    <span class="highlight-keyword">return</span> <span class="highlight-function">original</span>(ptr1, size, flags, buffer, offset, mode);
+}</code></pre>
+        
+        <div class="code-header">Example: Function with 14 arguments (large thunk)</div>
+        <pre class="with-header"><code><span class="highlight-comment">// For functions with more than 6 args, use MH_DEFINE_THUNK_LARGE</span>
+<span class="highlight-keyword">typedef long</span> (*<span class="highlight-function">huge_func_t</span>)(
+    <span class="highlight-keyword">int</span> a1,  <span class="highlight-keyword">int</span> a2,  <span class="highlight-keyword">int</span> a3,  <span class="highlight-keyword">int</span> a4,   <span class="highlight-comment">// RDI, RSI, RDX, RCX</span>
+    <span class="highlight-keyword">int</span> a5,  <span class="highlight-keyword">int</span> a6,                        <span class="highlight-comment">// R8, R9</span>
+    <span class="highlight-keyword">int</span> a7,  <span class="highlight-keyword">int</span> a8,  <span class="highlight-keyword">int</span> a9,  <span class="highlight-keyword">int</span> a10,  <span class="highlight-comment">// Stack args</span>
+    <span class="highlight-keyword">int</span> a11, <span class="highlight-keyword">int</span> a12, <span class="highlight-keyword">int</span> a13, <span class="highlight-keyword">int</span> a14   <span class="highlight-comment">// Stack args</span>
+);
+
+<span class="highlight-keyword">static</span> mh_hook_t g_huge_hook = {<span class="highlight-number">0</span>};
+<span class="highlight-function">MH_DEFINE_THUNK_LARGE</span>(huge, huge_callback)  <span class="highlight-comment">// Large thunk for >6 args</span>
+<span class="highlight-keyword">extern void</span> *__mh_tramp_slot_huge;
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">long</span> <span class="highlight-function">huge_callback</span>(
+    <span class="highlight-keyword">int</span> a1,  <span class="highlight-keyword">int</span> a2,  <span class="highlight-keyword">int</span> a3,  <span class="highlight-keyword">int</span> a4,
+    <span class="highlight-keyword">int</span> a5,  <span class="highlight-keyword">int</span> a6,  <span class="highlight-keyword">int</span> a7,  <span class="highlight-keyword">int</span> a8,
+    <span class="highlight-keyword">int</span> a9,  <span class="highlight-keyword">int</span> a10, <span class="highlight-keyword">int</span> a11, <span class="highlight-keyword">int</span> a12,
+    <span class="highlight-keyword">int</span> a13, <span class="highlight-keyword">int</span> a14) {
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Function called with 14 arguments!\n"</span>);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Register args: %d %d %d %d %d %d\n"</span>, a1, a2, a3, a4, a5, a6);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Stack args: %d %d %d %d %d %d %d %d\n"</span>, 
+           a7, a8, a9, a10, a11, a12, a13, a14);
+    
+    <span class="highlight-comment">// Call original with all 14 arguments</span>
+    huge_func_t original = (huge_func_t)g_huge_hook.orig_fn;
+    <span class="highlight-keyword">long</span> result = <span class="highlight-function">original</span>(a1, a2, a3, a4, a5, a6, a7, a8, 
+                            a9, a10, a11, a12, a13, a14);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[HOOK] Result: %ld\n"</span>, result);
+    <span class="highlight-keyword">return</span> result;
+}
+
+<span class="highlight-comment">// Installation is the same, just use the large thunk</span>
+<span class="highlight-keyword">void</span> <span class="highlight-function">install_huge_hook</span>(<span class="highlight-keyword">uint64_t</span> base) {
+    g_huge_hook.target_addr = base + HUGE_FUNC_OFFSET;
+    g_huge_hook.user_impl   = (<span class="highlight-keyword">void</span>*)huge_callback;
+    g_huge_hook.user_thunk  = (<span class="highlight-keyword">void</span>*)<span class="highlight-function">MH_THUNK_ENTRY</span>(huge);
+    
+    <span class="highlight-keyword">if</span> (<span class="highlight-function">mh_install</span>(&g_huge_hook) == <span class="highlight-number">0</span>) {
+        <span class="highlight-function">mh_bind_thunk_slot</span>(&__mh_tramp_slot_huge, g_huge_hook.orig_fn);
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[SUCCESS] Huge function hooked!\n"</span>);
+    }
+}</code></pre>
+        
+        <div class="important">
+            <strong>📌 When to use each thunk:</strong>
+            <ul>
+                <li><code>MH_DEFINE_THUNK</code> - For functions with 1-6 arguments (most common)</li>
+                <li><code>MH_DEFINE_THUNK_LARGE</code> - For functions with 7-14 arguments</li>
+                <li>For >14 arguments: You'll need to modify the thunk to handle more stack args</li>
+            </ul>
+        </div>
+        
+        <h3>Pattern Scanning</h3>
+        
+        <div class="code-header">Finding functions dynamically using signatures</div>
+        <pre class="with-header"><code><span class="highlight-comment">// Use pattern scanning to find function address</span>
+<span class="highlight-keyword">uint8_t</span> *find_target = <span class="highlight-function">PatternScan</span>(
+    module_base, 
+    module_size,
+    <span class="highlight-string">"48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20"</span>  <span class="highlight-comment">// IDA-style pattern</span>
+);
+
+<span class="highlight-keyword">if</span> (find_target) {
+    g_hook.target_addr = (<span class="highlight-keyword">uintptr_t</span>)find_target;
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[SCAN] Found target at 0x%lX\n"</span>, g_hook.target_addr);
+} <span class="highlight-keyword">else</span> {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[SCAN] Pattern not found!\n"</span>);
+}</code></pre>
+
+        <h3>Hook Chaining</h3>
+        
+        <div class="code-header">Multiple hooks on the same function</div>
+        <pre class="with-header"><code><span class="highlight-comment">// First hook's callback can call second hook's original</span>
+<span class="highlight-comment">// This creates a chain: Target -> Hook1 -> Hook2 -> Original</span>
+
+<span class="highlight-keyword">static</span> mh_hook_t g_hook_layer1 = {<span class="highlight-number">0</span>};
+<span class="highlight-keyword">static</span> mh_hook_t g_hook_layer2 = {<span class="highlight-number">0</span>};
+
+<span class="highlight-comment">// Install in reverse order</span>
+g_hook_layer2.target_addr = target;
+<span class="highlight-function">mh_install</span>(&g_hook_layer2);  <span class="highlight-comment">// Hooks original</span>
+
+g_hook_layer1.target_addr = target;
+<span class="highlight-function">mh_install</span>(&g_hook_layer1);  <span class="highlight-comment">// Hooks layer2's hook</span></code></pre>
+
+        <h3>Thread Safety Considerations</h3>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> The hook library does not provide thread synchronization. 
+            When hooking functions that may be called from multiple threads:
+            <ul>
+                <li>Use atomic operations for shared state</li>
+                <li>Implement proper locking in your callbacks</li>
+                <li>Be careful with hook installation/removal timing</li>
+            </ul>
+        </div>
+
+        <div class="code-header">Thread-safe callback example</div>
+        <pre class="with-header"><code><span class="highlight-keyword">#include</span> <span class="highlight-string">&lt;pthread.h&gt;</span>
+
+<span class="highlight-keyword">static</span> pthread_mutex_t g_hook_mutex = PTHREAD_MUTEX_INITIALIZER;
+<span class="highlight-keyword">static int</span> g_call_counter = <span class="highlight-number">0</span>;
+
+<span class="highlight-keyword">extern</span> <span class="highlight-string">"C"</span> <span class="highlight-keyword">int</span> <span class="highlight-function">thread_safe_callback</span>(<span class="highlight-keyword">int</span> param) {
+    <span class="highlight-function">pthread_mutex_lock</span>(&g_hook_mutex);
+    g_call_counter++;
+    <span class="highlight-keyword">int</span> local_count = g_call_counter;
+    <span class="highlight-function">pthread_mutex_unlock</span>(&g_hook_mutex);
+    
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"[THREAD-SAFE] Call #%d from thread %lu\n"</span>, 
+           local_count, <span class="highlight-function">pthread_self</span>());
+    
+    <span class="highlight-comment">// Call original</span>
+    <span class="highlight-keyword">typedef int</span> (*<span class="highlight-function">orig_func_t</span>)(<span class="highlight-keyword">int</span>);
+    orig_func_t original = (orig_func_t)g_hook.orig_fn;
+    <span class="highlight-keyword">return</span> <span class="highlight-function">original</span>(param);
+}</code></pre>
+
+        <h2 id="troubleshooting">🐛 Troubleshooting</h2>
+        
+        <table>
+            <tr>
+                <th>Error</th>
+                <th>Possible Cause</th>
+                <th>Solution</th>
+            </tr>
+            <tr>
+                <td>Hook installation returns -1</td>
+                <td>Invalid parameters</td>
+                <td>Check that target_addr, user_thunk, and user_impl are set</td>
+            </tr>
+            <tr>
+                <td>Hook installation returns -2</td>
+                <td>HDE64 decode error</td>
+                <td>Target may not be valid code or uses unsupported instructions</td>
+            </tr>
+            <tr>
+                <td>Hook installation returns -3</td>
+                <td>mmap failed</td>
+                <td>Check system memory limits and permissions</td>
+            </tr>
+            <tr>
+                <td>Crash after hook</td>
+                <td>Stack alignment issue</td>
+                <td>Ensure callback maintains 16-byte stack alignment</td>
+            </tr>
+            <tr>
+                <td>Original function not working</td>
+                <td>Trampoline slot not bound</td>
+                <td>Call mh_bind_thunk_slot after mh_install</td>
+            </tr>
+            <tr>
+                <td>Wrong function hooked</td>
+                <td>ASLR or wrong offset</td>
+                <td>Verify offset with debugger, use pattern scanning</td>
+            </tr>
+        </table>
+
+        <h3>Debug Tips</h3>
+        
+        <div class="success">
+            <strong>💡 Debugging Best Practices:</strong>
+            <ul>
+                <li>Always log hook installation with addresses</li>
+                <li>Verify target instructions with HDE64 before hooking</li>
+                <li>Test with simple logging callbacks first</li>
+                <li>Use pattern scanning for version-independent hooks</li>
+                <li>Keep original function calls in initial tests</li>
+                <li>Monitor system logs for crash information</li>
+            </ul>
+        </div>
+
+        <h3>Common Patterns</h3>
+        
+        <div class="code-header">Useful debugging helper</div>
+        <pre class="with-header"><code><span class="highlight-keyword">void</span> <span class="highlight-function">dump_hook_info</span>(mh_hook_t *hook, <span class="highlight-keyword">const char</span> *name) {
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"=== Hook Info: %s ===\n"</span>, name);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Target:     0x%lX\n"</span>, hook->target_addr);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Stolen:     %zu bytes\n"</span>, hook->stolen_len);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Trampoline: %p\n"</span>, hook->tramp_mem);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Original:   %p\n"</span>, hook->orig_fn);
+    <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Installed:  %s\n"</span>, hook->installed ? <span class="highlight-string">"YES"</span> : <span class="highlight-string">"NO"</span>);
+    
+    <span class="highlight-comment">// Dump first few bytes of target</span>
+    <span class="highlight-keyword">if</span> (hook->target_addr) {
+        <span class="highlight-keyword">uint8_t</span> *p = (<span class="highlight-keyword">uint8_t</span>*)hook->target_addr;
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"  Target bytes: "</span>);
+        <span class="highlight-keyword">for</span> (<span class="highlight-keyword">int</span> i = <span class="highlight-number">0</span>; i < <span class="highlight-number">16</span>; i++) {
+            <span class="highlight-function">mh_log</span>(<span class="highlight-string">"%02X "</span>, p[i]);
+        }
+        <span class="highlight-function">mh_log</span>(<span class="highlight-string">"\n"</span>);
+    }
+}</code></pre>
+
+        <h3>Performance Considerations</h3>
+        
+        <div class="important">
+            <strong>Performance Tips:</strong>
+            <ul>
+                <li><strong>Minimize callback overhead:</strong> Keep callbacks lightweight</li>
+                <li><strong>Avoid heavy logging:</strong> Use conditional compilation for debug logs</li>
+                <li><strong>Cache frequently used data:</strong> Don't recalculate on every call</li>
+                <li><strong>Profile hot paths:</strong> Measure impact on frequently called functions</li>
+            </ul>
+        </div>
+
+        <div class="success">
+            <h3>✅ Summary</h3>
+            <p>
+                You now have a complete understanding of the Mini Hook Library. This powerful tool enables you to:
+            </p>
+            <ul>
+                <li>Intercept and modify function behavior at runtime</li>
+                <li>Create stable hooks using ASLR-proof offsets</li>
+                <li>Chain multiple hooks for complex scenarios</li>
+                <li>Debug and analyze program flow</li>
+            </ul>
+            <p>
+                Remember to always test thoroughly and handle edge cases appropriately. Happy hooking!
+            </p>
+        </div>
+
+        <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+            <p>Mini Hook Library Tutorial v1.0 | PS4 GoldHEN Plugin Development</p>
+        </div>
+    </div>
+</body>
+</html>

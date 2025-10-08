@@ -1,0 +1,1 @@
+Mozilla/5.0 (PlayStation 4) Cobalt/22.lts.6.309248-gold (unlike Gecko) v8/8.8.278.8-jitless gles Starboard/13, YouTube_GAME_JaguarBased_2013/unknown (Sony, PS4, Wired)

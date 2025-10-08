@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Hooking for Beginners - Complete Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        nav {
+            background: #2d3748;
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        nav li {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        nav a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 15px 20px;
+            transition: background 0.3s;
+            text-align: center;
+        }
+        
+        nav a:hover {
+            background: #4a5568;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        section {
+            margin-bottom: 50px;
+        }
+        
+        h2 {
+            color: #2d3748;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        h3 {
+            color: #4a5568;
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            color: #2d3748;
+            text-align: justify;
+        }
+        
+        .code-block {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            position: relative;
+            white-space: pre;
+            line-height: 1.4;
+        }
+        
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: #4a5568;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #cbd5e0;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #92400e;
+            font-weight: bold;
+        }
+        
+        .diagram {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .warning {
+            background: #fed7d7;
+            border-left: 5px solid #fc8181;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .info {
+            background: #bee3f8;
+            border-left: 5px solid #4299e1;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            border-left: 5px solid #48bb78;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .interactive-demo {
+            background: #edf2f7;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin: 20px 0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f7fafc;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            margin-right: 5px;
+            transition: background 0.3s;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 0 8px 8px 8px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .flow-chart {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .flow-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+            min-width: 150px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .flow-arrow {
+            position: absolute;
+            right: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2em;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Function Hooking for Beginners</h1>
+            <p>A Complete Guide to Understanding and Implementing Function Hooks</p>
+        </header>
+        
+        <nav>
+            <ul>
+                <li><a href="#intro">Introduction</a></li>
+                <li><a href="#assembly">x86_64 Assembly</a></li>
+                <li><a href="#calling">Calling Conventions</a></li>
+                <li><a href="#basics">Basic Concepts</a></li>
+                <li><a href="#lowlevel">Low-Level Mechanics</a></li>
+                <li><a href="#types">Hook Types</a></li>
+                <li><a href="#implementation">Implementation</a></li>
+                <li><a href="#realworld">Real-World Uses</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#advanced">Advanced Topics</a></li>
+            </ul>
+        </nav>
+        
+        <div class="content">
+            <section id="intro">
+                <h2>Introduction</h2>
+                <p>
+                    Function hooking is a powerful programming technique that allows you to intercept and modify the behavior of existing functions at runtime. 
+                    Think of it as placing a "detour" sign on a road - when the program tries to execute the original function, it gets redirected to your custom code first.
+                </p>
+                
+                <div class="info">
+                    <strong>💡 Real-World Analogy:</strong> Imagine a post office that normally delivers mail directly to houses. 
+                    Function hooking is like setting up a checkpoint where all mail passes through you first - you can inspect it, 
+                    modify it, log it, or even decide not to deliver it at all!
+                </div>
+                
+                <h3>Why Use Function Hooking?</h3>
+                <ul style="margin-left: 30px;">
+                    <li>🔍 <strong>Debugging:</strong> Monitor function calls and their parameters</li>
+                    <li>📊 <strong>Profiling:</strong> Measure performance and execution time</li>
+                    <li>🛡️ <strong>Security:</strong> Implement runtime protections and sandboxing</li>
+                    <li>🔧 <strong>Modding:</strong> Modify game or application behavior</li>
+                    <li>🧪 <strong>Testing:</strong> Mock functions for unit testing</li>
+                    <li>📝 <strong>Logging:</strong> Add logging to closed-source applications</li>
+                </ul>
+            </section>
+            
+            <section id="assembly">
+                <h2>x86_64 Assembly Basics</h2>
+                
+                <p>
+                    Before diving into hooking, you need to understand the fundamental assembly instructions and registers used in x86_64 architecture.
+                    This knowledge is crucial because hooks work by manipulating CPU instructions directly.
+                </p>
+                
+                <h3>CPU Registers</h3>
+                <div class="info">
+                    <strong>📦 x86_64 General Purpose Registers:</strong>
+                </div>
+                
+                <table>
+                    <tr>
+                        <th>64-bit</th>
+                        <th>32-bit</th>
+                        <th>16-bit</th>
+                        <th>8-bit</th>
+                        <th>Purpose</th>
+                    </tr>
+                    <tr>
+                        <td>RAX</td>
+                        <td>EAX</td>
+                        <td>AX</td>
+                        <td>AL/AH</td>
+                        <td>Accumulator, return values</td>
+                    </tr>
+                    <tr>
+                        <td>RBX</td>
+                        <td>EBX</td>
+                        <td>BX</td>
+                        <td>BL/BH</td>
+                        <td>Base register, preserved across calls</td>
+                    </tr>
+                    <tr>
+                        <td>RCX</td>
+                        <td>ECX</td>
+                        <td>CX</td>
+                        <td>CL/CH</td>
+                        <td>Counter, 4th argument (Windows), 4th arg (Linux)</td>
+                    </tr>
+                    <tr>
+                        <td>RDX</td>
+                        <td>EDX</td>
+                        <td>DX</td>
+                        <td>DL/DH</td>
+                        <td>Data, 3rd argument, upper 64-bits of 128-bit results</td>
+                    </tr>
+                    <tr>
+                        <td>RSI</td>
+                        <td>ESI</td>
+                        <td>SI</td>
+                        <td>SIL</td>
+                        <td>Source index, 2nd argument (Linux)</td>
+                    </tr>
+                    <tr>
+                        <td>RDI</td>
+                        <td>EDI</td>
+                        <td>DI</td>
+                        <td>DIL</td>
+                        <td>Destination index, 1st argument (Linux)</td>
+                    </tr>
+                    <tr>
+                        <td>RSP</td>
+                        <td>ESP</td>
+                        <td>SP</td>
+                        <td>SPL</td>
+                        <td>Stack pointer (top of stack)</td>
+                    </tr>
+                    <tr>
+                        <td>RBP</td>
+                        <td>EBP</td>
+                        <td>BP</td>
+                        <td>BPL</td>
+                        <td>Base pointer (stack frame base)</td>
+                    </tr>
+                    <tr>
+                        <td>R8-R15</td>
+                        <td>R8D-R15D</td>
+                        <td>R8W-R15W</td>
+                        <td>R8B-R15B</td>
+                        <td>Additional general purpose (R8-R9 for args 5-6)</td>
+                    </tr>
+                </table>
+                
+                <h3>Essential Assembly Instructions</h3>
+                <div class="code-block" data-lang="Assembly">
+; Data Movement
+mov  rax, rbx        ; Copy rbx to rax
+mov  rax, [rbx]      ; Load value from memory address in rbx
+mov  [rax], rbx      ; Store rbx to memory address in rax
+lea  rax, [rbx+8]    ; Load effective address (calculate rbx+8, store in rax)
+push rax             ; Push rax onto stack, decrement RSP by 8
+pop  rax             ; Pop from stack into rax, increment RSP by 8
+
+; Arithmetic
+add  rax, rbx        ; rax = rax + rbx
+sub  rax, 10         ; rax = rax - 10
+imul rax, rbx        ; rax = rax * rbx (signed)
+inc  rax             ; rax = rax + 1
+dec  rax             ; rax = rax - 1
+
+; Logical Operations
+and  rax, rbx        ; Bitwise AND
+or   rax, rbx        ; Bitwise OR
+xor  rax, rax        ; Common way to zero a register (rax = 0)
+not  rax             ; Bitwise NOT
+shl  rax, 2          ; Shift left by 2 (multiply by 4)
+shr  rax, 1          ; Shift right by 1 (divide by 2)
+
+; Comparison and Jumps
+cmp  rax, rbx        ; Compare (sets flags, doesn't modify registers)
+test rax, rax        ; AND but only sets flags (common for checking if zero)
+jmp  label           ; Unconditional jump
+je   label           ; Jump if equal (after cmp)
+jne  label           ; Jump if not equal
+jg   label           ; Jump if greater (signed)
+jl   label           ; Jump if less (signed)
+ja   label           ; Jump if above (unsigned)
+jb   label           ; Jump if below (unsigned)
+
+; Function Calls
+call function        ; Push return address, jump to function
+ret                  ; Pop return address, jump to it
+nop                  ; No operation (1 byte, used for padding)
+                </div>
+                
+                <h3>Understanding the Stack</h3>
+                <div class="diagram">
+                    <svg width="500" height="400" viewBox="0 0 500 400">
+                        <text x="250" y="30" text-anchor="middle" font-size="20" font-weight="bold">Stack Layout (grows downward)</text>
+                        
+                        <!-- Stack representation -->
+                        <rect x="150" y="60" width="200" height="40" fill="#fed7d7" stroke="#000"/>
+                        <text x="250" y="85" text-anchor="middle">Higher Addresses</text>
+                        
+                        <rect x="150" y="100" width="200" height="40" fill="#fef3c7" stroke="#000"/>
+                        <text x="250" y="125" text-anchor="middle">Function Arguments (7+)</text>
+                        
+                        <rect x="150" y="140" width="200" height="40" fill="#ddd6fe" stroke="#000"/>
+                        <text x="250" y="165" text-anchor="middle">Return Address</text>
+                        <text x="380" y="165">← Pushed by CALL</text>
+                        
+                        <rect x="150" y="180" width="200" height="40" fill="#bfdbfe" stroke="#000"/>
+                        <text x="250" y="205" text-anchor="middle">Saved RBP</text>
+                        <text x="380" y="205">← RBP points here</text>
+                        
+                        <rect x="150" y="220" width="200" height="40" fill="#bbf7d0" stroke="#000"/>
+                        <text x="250" y="245" text-anchor="middle">Local Variables</text>
+                        
+                        <rect x="150" y="260" width="200" height="40" fill="#a7f3d0" stroke="#000"/>
+                        <text x="250" y="285" text-anchor="middle">Saved Registers</text>
+                        
+                        <rect x="150" y="300" width="200" height="40" fill="#c6f6d5" stroke="#000"/>
+                        <text x="250" y="325" text-anchor="middle">[Available Space]</text>
+                        <text x="380" y="325">← RSP points here</text>
+                        
+                        <rect x="150" y="340" width="200" height="40" fill="#e9d5ff" stroke="#000"/>
+                        <text x="250" y="365" text-anchor="middle">Lower Addresses</text>
+                    </svg>
+                </div>
+                
+                <h3>Common Function Prologue/Epilogue</h3>
+                <div class="code-block" data-lang="Assembly">
+; Function Prologue (entry)
+push rbp            ; Save old base pointer
+mov  rbp, rsp       ; Set up new base pointer
+sub  rsp, 0x20      ; Allocate 32 bytes for local variables
+
+; Function body
+; ... your code here ...
+
+; Function Epilogue (exit)
+mov  rsp, rbp       ; Restore stack pointer
+pop  rbp            ; Restore base pointer
+ret                 ; Return to caller
+
+; Alternative epilogue
+leave               ; Equivalent to: mov rsp, rbp; pop rbp
+ret
+                </div>
+                
+                <h3>Jump Instructions for Hooking</h3>
+                <div class="code-block" data-lang="Assembly">
+; Near relative jump (5 bytes) - ±2GB range
+E9 XX XX XX XX      ; jmp rel32 (offset from next instruction)
+
+; Near absolute jump via register (2 bytes)
+FF E0               ; jmp rax
+FF E3               ; jmp rbx
+
+; Near absolute jump via memory (6 bytes)
+FF 25 XX XX XX XX   ; jmp [rip+offset] (commonly used in x64)
+
+; Far absolute jump (14 bytes total on x64)
+FF 25 00 00 00 00   ; jmp [rip+0]
+XX XX XX XX XX XX XX XX  ; 8-byte absolute address follows
+
+; Example: Jump to 0x7FFF12345678
+FF 25 00 00 00 00   ; jmp [rip+0]
+78 56 34 12 FF 7F 00 00  ; Address in little-endian
+                </div>
+            </section>
+            
+            <section id="calling">
+                <h2>Calling Conventions</h2>
+                
+                <p>
+                    Calling conventions define how functions pass parameters and return values. Understanding these is critical 
+                    for hooking because you must preserve the expected behavior when intercepting function calls.
+                </p>
+                
+                <h3>System V AMD64 ABI (Linux, macOS, PS4)</h3>
+                <div class="info">
+                    <strong>🐧 Used by: Linux, macOS, FreeBSD, PlayStation</strong>
+                </div>
+                
+                <table>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Integer/Pointer</th>
+                        <th>Floating Point</th>
+                    </tr>
+                    <tr><td>1st</td><td>RDI</td><td>XMM0</td></tr>
+                    <tr><td>2nd</td><td>RSI</td><td>XMM1</td></tr>
+                    <tr><td>3rd</td><td>RDX</td><td>XMM2</td></tr>
+                    <tr><td>4th</td><td>RCX</td><td>XMM3</td></tr>
+                    <tr><td>5th</td><td>R8</td><td>XMM4</td></tr>
+                    <tr><td>6th</td><td>R9</td><td>XMM5</td></tr>
+                    <tr><td>7th+</td><td colspan="2">Stack (right to left)</td></tr>
+                    <tr><td>Return</td><td>RAX (RDX:RAX for 128-bit)</td><td>XMM0 (XMM1:XMM0 for complex)</td></tr>
+                </table>
+                
+                <div class="code-block" data-lang="C">
+// C function
+int example(int a, long b, char* c, double d, float e, int f, int g);
+
+// Assembly call setup (System V)
+mov  edi, 10        ; a = 10 (use edi for 32-bit int)
+mov  rsi, 20        ; b = 20
+lea  rdx, [string]  ; c = pointer to string
+movsd xmm0, [double_val]  ; d = double value
+movss xmm1, [float_val]   ; e = float value
+mov  r8d, 30        ; f = 30
+push 40             ; g = 40 (on stack)
+call example
+add  rsp, 8         ; Clean up stack
+                </div>
+                
+                <h3>Microsoft x64 Calling Convention (Windows)</h3>
+                <div class="info">
+                    <strong>🪟 Used by: Windows x64</strong>
+                </div>
+                
+                <table>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Integer/Pointer</th>
+                        <th>Floating Point</th>
+                    </tr>
+                    <tr><td>1st</td><td>RCX</td><td>XMM0</td></tr>
+                    <tr><td>2nd</td><td>RDX</td><td>XMM1</td></tr>
+                    <tr><td>3rd</td><td>R8</td><td>XMM2</td></tr>
+                    <tr><td>4th</td><td>R9</td><td>XMM3</td></tr>
+                    <tr><td>5th+</td><td colspan="2">Stack (with 32-byte shadow space)</td></tr>
+                    <tr><td>Return</td><td>RAX</td><td>XMM0</td></tr>
+                </table>
+                
+                <div class="warning">
+                    <strong>⚠️ Shadow Space:</strong> Windows x64 requires 32 bytes of "shadow space" on the stack 
+                    before the call, even if the function takes fewer than 4 parameters!
+                </div>
+                
+                <div class="code-block" data-lang="Assembly">
+; Windows x64 function call
+sub  rsp, 0x28      ; 32 bytes shadow space + 8 for alignment
+mov  rcx, rdi       ; 1st parameter
+mov  rdx, rsi       ; 2nd parameter  
+mov  r8, rbx        ; 3rd parameter
+mov  r9, 100        ; 4th parameter
+mov  qword [rsp+0x20], 200  ; 5th parameter (after shadow space)
+call function
+add  rsp, 0x28      ; Clean up
+                </div>
+                
+                <h3>Preserved vs Volatile Registers</h3>
+                <table>
+                    <tr>
+                        <th>Convention</th>
+                        <th>Preserved (Callee-saved)</th>
+                        <th>Volatile (Caller-saved)</th>
+                    </tr>
+                    <tr>
+                        <td>System V AMD64</td>
+                        <td>RBX, RBP, R12-R15, RSP</td>
+                        <td>RAX, RCX, RDX, RSI, RDI, R8-R11</td>
+                    </tr>
+                    <tr>
+                        <td>Microsoft x64</td>
+                        <td>RBX, RBP, RDI, RSI, R12-R15, RSP</td>
+                        <td>RAX, RCX, RDX, R8-R11</td>
+                    </tr>
+                </table>
+                
+                <div class="info">
+                    <strong>💡 Important for Hooks:</strong> Your hook MUST preserve callee-saved registers! 
+                    If you modify them, save them first and restore before returning.
+                </div>
+                
+                <h3>Stack Alignment</h3>
+                <div class="warning">
+                    <strong>⚠️ Critical Rule:</strong> The stack MUST be 16-byte aligned before any CALL instruction!
+                    <br>Formula: (RSP - 8) % 16 == 0 at the call site
+                </div>
+                
+                <div class="code-block" data-lang="Assembly">
+; Ensuring stack alignment in a hook
+push rbp
+mov  rbp, rsp
+and  rsp, -16       ; Align stack to 16-byte boundary
+sub  rsp, 0x20      ; Allocate space (keep 16-byte aligned)
+
+; ... do work ...
+
+mov  rsp, rbp
+pop  rbp
+ret
+                </div>
+            </section>
+            
+            <section id="basics">
+                <h2>Basic Concepts</h2>
+                
+                <h3>How Memory and Functions Work</h3>
+                <p>
+                    Before diving into hooking, let's understand how functions exist in memory. When a program runs, 
+                    its code is loaded into memory as a series of bytes representing CPU instructions.
+                </p>
+                
+                <div class="diagram">
+                    <svg width="600" height="200" viewBox="0 0 600 200">
+                        <rect x="10" y="50" width="580" height="100" fill="#e2e8f0" stroke="#4a5568" stroke-width="2"/>
+                        <text x="300" y="30" text-anchor="middle" font-size="18" font-weight="bold">Program Memory Layout</text>
+                        
+                        <rect x="20" y="60" width="100" height="80" fill="#fef3c7"/>
+                        <text x="70" y="100" text-anchor="middle">Code Section</text>
+                        
+                        <rect x="130" y="60" width="100" height="80" fill="#ddd6fe"/>
+                        <text x="180" y="100" text-anchor="middle">Data Section</text>
+                        
+                        <rect x="240" y="60" width="100" height="80" fill="#bfdbfe"/>
+                        <text x="290" y="100" text-anchor="middle">Heap</text>
+                        
+                        <rect x="350" y="60" width="100" height="80" fill="#bbf7d0"/>
+                        <text x="400" y="100" text-anchor="middle">Stack</text>
+                        
+                        <rect x="460" y="60" width="120" height="80" fill="#fecaca"/>
+                        <text x="520" y="100" text-anchor="middle">Shared Libraries</text>
+                    </svg>
+                </div>
+                
+                <h3>Function Call Mechanism</h3>
+                <p>
+                    When a function is called, the CPU performs several steps:
+                </p>
+                
+                <div class="flow-chart">
+                    <div class="flow-item">
+                        Save Return Address
+                        <div class="flow-arrow">→</div>
+                    </div>
+                    <div class="flow-item">
+                        Push Arguments
+                        <div class="flow-arrow">→</div>
+                    </div>
+                    <div class="flow-item">
+                        Jump to Function
+                        <div class="flow-arrow">→</div>
+                    </div>
+                    <div class="flow-item">
+                        Execute Code
+                        <div class="flow-arrow">→</div>
+                    </div>
+                    <div class="flow-item">
+                        Return to Caller
+                    </div>
+                </div>
+            </section>
+            
+            <section id="lowlevel">
+                <h2>Low-Level Hook Mechanics</h2>
+                
+                <p>
+                    Now let's explore exactly how hooks work at the CPU instruction level. This is where assembly knowledge becomes crucial.
+                </p>
+                
+                <h3>Step-by-Step Hook Installation</h3>
+                
+                <div class="diagram">
+                    <svg width="700" height="500" viewBox="0 0 700 500">
+                        <text x="350" y="30" text-anchor="middle" font-size="20" font-weight="bold">Hook Installation Process</text>
+                        
+                        <!-- Original Function -->
+                        <g id="original">
+                            <rect x="50" y="60" width="250" height="180" fill="#fef3c7" stroke="#000" stroke-width="2"/>
+                            <text x="175" y="85" text-anchor="middle" font-weight="bold">Original Function</text>
+                            <text x="60" y="110" font-family="monospace" font-size="12">0x1000: push rbp</text>
+                            <text x="60" y="130" font-family="monospace" font-size="12">0x1001: mov rbp, rsp</text>
+                            <text x="60" y="150" font-family="monospace" font-size="12">0x1004: sub rsp, 0x20</text>
+                            <text x="60" y="170" font-family="monospace" font-size="12">0x1008: mov rax, rdi</text>
+                            <text x="60" y="190" font-family="monospace" font-size="12">0x100B: add rax, rsi</text>
+                            <text x="60" y="210" font-family="monospace" font-size="12">0x100E: mov rsp, rbp</text>
+                            <text x="60" y="230" font-family="monospace" font-size="12">0x1011: pop rbp; ret</text>
+                        </g>
+                        
+                        <!-- Arrow -->
+                        <path d="M 320 150 L 380 150" stroke="#000" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <text x="350" y="140" text-anchor="middle">Hook</text>
+                        
+                        <!-- Hooked Function -->
+                        <g id="hooked">
+                            <rect x="400" y="60" width="250" height="180" fill="#fecaca" stroke="#000" stroke-width="2"/>
+                            <text x="525" y="85" text-anchor="middle" font-weight="bold">After Hooking</text>
+                            <text x="410" y="110" font-family="monospace" font-size="12">0x1000: jmp [0x2000]</text>
+                            <text x="410" y="130" font-family="monospace" font-size="12">0x100E: nop; nop; nop</text>
+                            <text x="410" y="150" font-family="monospace" font-size="12">0x1011: pop rbp; ret</text>
+                            <text x="410" y="170" font-family="monospace" font-size="12" fill="#888">(rest unchanged)</text>
+                        </g>
+                        
+                        <!-- Hook Function -->
+                        <g id="hook">
+                            <rect x="50" y="270" width="250" height="140" fill="#bfdbfe" stroke="#000" stroke-width="2"/>
+                            <text x="175" y="295" text-anchor="middle" font-weight="bold">Hook Function (0x2000)</text>
+                            <text x="60" y="320" font-family="monospace" font-size="12">save context</text>
+                            <text x="60" y="340" font-family="monospace" font-size="12">log/modify args</text>
+                            <text x="60" y="360" font-family="monospace" font-size="12">call callback</text>
+                            <text x="60" y="380" font-family="monospace" font-size="12">restore context</text>
+                            <text x="60" y="400" font-family="monospace" font-size="12">jmp trampoline</text>
+                        </g>
+                        
+                        <!-- Trampoline -->
+                        <g id="trampoline">
+                            <rect x="400" y="270" width="250" height="140" fill="#c6f6d5" stroke="#000" stroke-width="2"/>
+                            <text x="525" y="295" text-anchor="middle" font-weight="bold">Trampoline (0x3000)</text>
+                            <text x="410" y="320" font-family="monospace" font-size="12">push rbp</text>
+                            <text x="410" y="340" font-family="monospace" font-size="12">mov rbp, rsp</text>
+                            <text x="410" y="360" font-family="monospace" font-size="12">sub rsp, 0x20</text>
+                            <text x="410" y="380" font-family="monospace" font-size="12">mov rax, rdi</text>
+                            <text x="410" y="400" font-family="monospace" font-size="12">jmp 0x100B</text>
+                        </g>
+                        
+                        <!-- Arrows showing flow -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#000"/>
+                            </marker>
+                        </defs>
+                        
+                        <path d="M 525 240 L 525 270" stroke="#f00" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <path d="M 300 340 L 400 340" stroke="#00f" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <path d="M 525 410 L 525 440 L 175 440 L 175 240" stroke="#0a0" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        
+                        <text x="350" y="470" text-anchor="middle" font-style="italic">Execution Flow: Original → Hook → Trampoline → Back to Original</text>
+                    </svg>
+                </div>
+                
+                <h3>Instruction-Level Hook Analysis</h3>
+                
+                <div class="code-block" data-lang="Assembly">
+; BEFORE HOOK - Original function bytes
+0x00401000: 55                    push rbp
+0x00401001: 48 89 E5              mov rbp, rsp
+0x00401004: 48 83 EC 20           sub rsp, 0x20
+0x00401008: 48 89 7D F8           mov [rbp-8], rdi    ; Save first arg
+0x0040100C: 48 89 75 F0           mov [rbp-16], rsi   ; Save second arg
+0x00401010: ... (function body)
+
+; AFTER HOOK - Modified function entry
+0x00401000: FF 25 00 00 00 00     jmp [rip+0]         ; 6 bytes
+0x00401006: 00 20 50 00 00 00 00 00  ; Address 0x502000 (8 bytes)
+0x0040100E: 90 90                 nop nop             ; Padding
+0x00401010: ... (rest unchanged)
+
+; TRAMPOLINE - Executes stolen bytes then returns
+0x00503000: 55                    push rbp            ; Stolen bytes
+0x00503001: 48 89 E5              mov rbp, rsp
+0x00503004: 48 83 EC 20           sub rsp, 0x20
+0x00503008: 48 89 7D F8           mov [rbp-8], rdi
+0x0050300C: 48 89 75 F0           mov [rbp-16], rsi
+0x00503010: FF 25 00 00 00 00     jmp [rip+0]         ; Jump back
+0x00503016: 10 10 40 00 00 00 00 00  ; To 0x401010 (original+16)
+                </div>
+                
+                <h3>Why We Need Instruction Boundaries</h3>
+                
+                <div class="warning">
+                    <strong>⚠️ Critical:</strong> You CANNOT split instructions! x86 instructions are variable length (1-15 bytes).
+                    Breaking an instruction in the middle creates invalid code that will crash.
+                </div>
+                
+                <div class="code-block" data-lang="Assembly">
+; WRONG - Splits instruction
+0x1000: 48 8B 84 24 88 00 00 00   ; mov rax, [rsp+0x88] (8 bytes)
+; If we only copy 5 bytes for our hook:
+; 48 8B 84 24 88 = incomplete instruction = CRASH!
+
+; RIGHT - Complete instructions
+0x1000: 48 89 E5                  ; mov rbp, rsp (3 bytes)
+0x1003: 48 83 EC 20               ; sub rsp, 0x20 (4 bytes)
+0x1007: 90                        ; nop (1 byte)
+; Total: 8 bytes of complete instructions
+                </div>
+                
+                <h3>Atomic Hook Installation</h3>
+                
+                <p>
+                    Hooks must be installed atomically to prevent crashes in multi-threaded applications:
+                </p>
+                
+                <div class="code-block" data-lang="C">
+// Safe hook installation process
+void install_hook_safely(void* target, void* hook) {
+    // 1. Suspend all other threads
+    suspend_all_threads();
+    
+    // 2. Check if any thread is executing in the target region
+    for (each_thread) {
+        if (thread_rip >= target && thread_rip < target + hook_size) {
+            // Thread is in the danger zone! Wait or relocate it
+            relocate_thread_rip(thread);
+        }
+    }
+    
+    // 3. Write the hook atomically
+    // For x64, we can use a single 8-byte write for the address
+    atomic_write_hook(target, hook);
+    
+    // 4. Flush CPU caches
+    FlushInstructionCache(GetCurrentProcess(), target, hook_size);
+    
+    // 5. Resume threads
+    resume_all_threads();
+}
+                </div>
+                
+                <h3>CPU Cache Considerations</h3>
+                
+                <div class="info">
+                    <strong>🧠 CPU Caches:</strong> Modern CPUs have separate instruction (I-cache) and data (D-cache) caches.
+                    When you modify code, you're writing to D-cache, but the CPU executes from I-cache!
+                </div>
+                
+                <div class="code-block" data-lang="C">
+// After writing hook bytes, flush caches:
+
+// Windows
+FlushInstructionCache(GetCurrentProcess(), address, size);
+
+// Linux/Unix
+__builtin___clear_cache(address, address + size);
+
+// x86 specific (works everywhere)
+asm volatile("mfence" ::: "memory");  // Memory fence
+// Or for older CPUs:
+asm volatile("cpuid" ::: "eax", "ebx", "ecx", "edx", "memory");
+                </div>
+                
+                <h3>Position-Independent Code (PIC)</h3>
+                
+                <p>
+                    Trampolines must handle position-dependent instructions carefully:
+                </p>
+                
+                <div class="code-block" data-lang="Assembly">
+; Original code with RIP-relative addressing
+0x1000: 48 8D 05 F9 FF FF FF    lea rax, [rip-7]    ; Load address relative to RIP
+0x1007: FF 15 43 20 00 00       call [rip+0x2043]   ; Call via RIP-relative
+
+; In trampoline at different address (WRONG):
+0x5000: 48 8D 05 F9 FF FF FF    lea rax, [rip-7]    ; Now points to wrong address!
+0x5007: FF 15 43 20 00 00       call [rip+0x2043]   ; Calls wrong function!
+
+; SOLUTION: Adjust relative offsets
+0x5000: 48 8D 05 F9 BF FF FF    lea rax, [rip-0x4007]  ; Adjusted offset
+0x5007: FF 15 43 E0 FF FF       call [rip-0x1FBD]      ; Adjusted offset
+                </div>
+                
+                <h3>Thread-Local Storage (TLS) Handling</h3>
+                
+                <div class="code-block" data-lang="Assembly">
+; Accessing TLS in x64
+mov rax, gs:[0x0]        ; Get TLS base (Linux/PS4)
+mov rax, gs:[0x58]       ; Get TLS base (Windows)
+
+; Your hook might need to preserve TLS state
+push gs                  ; Save segment
+; ... hook code ...
+pop gs                   ; Restore segment
+                </div>
+                
+                <h3>The Hooking Process</h3>
+                <p>
+                    Function hooking intercepts this process by modifying the function's entry point to redirect execution to our custom code:
+                </p>
+                
+                <div class="code-block" data-lang="Assembly">
+; Original Function
+0x1000: push rbp          ; Function prologue
+0x1001: mov rbp, rsp
+0x1004: sub rsp, 0x20
+0x1008: ... (original code)
+
+; After Hooking
+0x1000: jmp 0x2000       ; Jump to our hook (14 bytes)
+0x100E: nop              ; Padding
+0x100F: ... (rest of original code)
+
+; Our Hook Function
+0x2000: ; Save context
+0x2001: ; Call our handler
+0x2010: ; Restore context
+0x2020: ; Execute stolen bytes
+0x2030: jmp 0x100F       ; Return to original+offset
+                </div>
+            </section>
+            
+            <section id="types">
+                <h2>Types of Hooks</h2>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('inline')">Inline Hooks</button>
+                    <button class="tab" onclick="showTab('iat')">IAT Hooks</button>
+                    <button class="tab" onclick="showTab('vtable')">VTable Hooks</button>
+                    <button class="tab" onclick="showTab('exception')">Exception Hooks</button>
+                </div>
+                
+                <div id="inline" class="tab-content active">
+                    <h3>Inline Hooking (Detour)</h3>
+                    <p>
+                        The most common and powerful type. Directly modifies the target function's code to jump to your hook.
+                    </p>
+                    <div class="code-block" data-lang="C">
+// Example: Inline hook structure
+typedef struct {
+    void* target_function;      // Address of function to hook
+    void* hook_function;        // Our replacement function
+    void* trampoline;          // Bridge to call original
+    uint8_t original_bytes[16]; // Saved original instructions
+    size_t hook_size;          // Size of the hook
+} inline_hook_t;
+
+// Installation process
+int install_inline_hook(inline_hook_t* hook) {
+    // 1. Calculate safe hook size (instruction boundary)
+    size_t required_size = calculate_hook_size(hook->target_function);
+    
+    // 2. Save original bytes
+    memcpy(hook->original_bytes, hook->target_function, required_size);
+    
+    // 3. Create trampoline
+    hook->trampoline = create_trampoline(hook->original_bytes, required_size);
+    
+    // 4. Write jump to hook
+    write_jump(hook->target_function, hook->hook_function);
+    
+    return 0;
+}
+                    </div>
+                    <div class="success">
+                        <strong>✅ Pros:</strong> Works on any function, very flexible, can modify arguments<br>
+                        <strong>❌ Cons:</strong> Complex to implement, requires careful instruction analysis
+                    </div>
+                </div>
+                
+                <div id="iat" class="tab-content">
+                    <h3>Import Address Table (IAT) Hooking</h3>
+                    <p>
+                        Modifies the Import Address Table to redirect API calls. Only works for imported functions.
+                    </p>
+                    <div class="code-block" data-lang="C">
+// IAT Hook Example
+void* hook_iat_entry(const char* module, const char* function, void* hook) {
+    HMODULE hModule = GetModuleHandle(module);
+    IMAGE_DOS_HEADER* dosHeader = (IMAGE_DOS_HEADER*)hModule;
+    IMAGE_NT_HEADERS* ntHeader = (IMAGE_NT_HEADERS*)((BYTE*)hModule + dosHeader->e_lfanew);
+    
+    // Find import descriptor
+    IMAGE_IMPORT_DESCRIPTOR* importDesc = (IMAGE_IMPORT_DESCRIPTOR*)
+        ((BYTE*)hModule + ntHeader->OptionalHeader.DataDirectory[1].VirtualAddress);
+    
+    // Iterate through imports and find our target
+    while (importDesc->Name) {
+        // ... find and replace function pointer
+    }
+    return original_function;
+}
+                    </div>
+                    <div class="success">
+                        <strong>✅ Pros:</strong> Simple, stable, no instruction analysis needed<br>
+                        <strong>❌ Cons:</strong> Only works for imported functions, per-module basis
+                    </div>
+                </div>
+                
+                <div id="vtable" class="tab-content">
+                    <h3>Virtual Table (VTable) Hooking</h3>
+                    <p>
+                        For C++ objects, replaces entries in the virtual function table.
+                    </p>
+                    <div class="code-block" data-lang="C++">
+// VTable Hook Example
+class TargetClass {
+    virtual void Method1();
+    virtual void Method2();
+};
+
+// Hook by replacing vtable pointer
+void hook_vtable(TargetClass* obj) {
+    // Get vtable pointer (first member of object)
+    void*** vtable = (void***)obj;
+    void** old_vtable = *vtable;
+    
+    // Create new vtable
+    void** new_vtable = new void*[2];
+    new_vtable[0] = &MyMethod1Hook;  // Replace Method1
+    new_vtable[1] = old_vtable[1];   // Keep Method2
+    
+    // Replace vtable pointer
+    *vtable = new_vtable;
+}
+                    </div>
+                    <div class="success">
+                        <strong>✅ Pros:</strong> Clean for OOP, per-object or per-class<br>
+                        <strong>❌ Cons:</strong> Only for virtual functions, C++ specific
+                    </div>
+                </div>
+                
+                <div id="exception" class="tab-content">
+                    <h3>Exception-Based Hooking</h3>
+                    <p>
+                        Uses debug registers or page protection to trigger exceptions on function access.
+                    </p>
+                    <div class="code-block" data-lang="C">
+// Hardware breakpoint hook using debug registers
+void set_hardware_breakpoint(void* address, int dr_index) {
+    CONTEXT ctx = {0};
+    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+    
+    // Set debug register
+    switch(dr_index) {
+        case 0: ctx.Dr0 = (DWORD64)address; break;
+        case 1: ctx.Dr1 = (DWORD64)address; break;
+        // ...
+    }
+    
+    // Enable breakpoint
+    ctx.Dr7 |= (1 << (dr_index * 2));
+    
+    SetThreadContext(GetCurrentThread(), &ctx);
+}
+
+// Exception handler catches breakpoint
+LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* ExceptionInfo) {
+    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) {
+        // Handle our hook
+        // ...
+    }
+    return EXCEPTION_CONTINUE_EXECUTION;
+}
+                    </div>
+                    <div class="success">
+                        <strong>✅ Pros:</strong> No code modification, hard to detect<br>
+                        <strong>❌ Cons:</strong> Performance overhead, limited breakpoints (4 on x86)
+                    </div>
+                </div>
+            </section>
+            
+            <section id="realworld">
+                <h2>Real-World Hook Applications</h2>
+                
+                <p>
+                    Function hooking enables powerful capabilities across various domains. Here are concrete examples of what can be accomplished:
+                </p>
+                
+                <h3>🎮 Game Modding & Cheating</h3>
+                
+                <div class="info">
+                    <strong>Common Game Hooks:</strong>
+                </div>
+                
+                <div class="code-block" data-lang="C++">
+// 1. Infinite Health/God Mode
+typedef void (*TakeDamage_t)(Player* player, float damage);
+TakeDamage_t original_TakeDamage;
+
+void hooked_TakeDamage(Player* player, float damage) {
+    // Simply don't apply damage to our player
+    if (player == local_player) {
+        return;  // No damage taken
+    }
+    original_TakeDamage(player, damage);  // Others take damage normally
+}
+
+// 2. Wallhack/ESP (See through walls)
+typedef void (*RenderPlayer_t)(Player* player, RenderContext* ctx);
+RenderPlayer_t original_RenderPlayer;
+
+void hooked_RenderPlayer(Player* player, RenderContext* ctx) {
+    // Disable depth testing to see through walls
+    ctx->SetDepthTest(false);
+    ctx->SetColor(player->team == my_team ? COLOR_GREEN : COLOR_RED);
+    original_RenderPlayer(player, ctx);
+    ctx->SetDepthTest(true);
+}
+
+// 3. Aimbot
+typedef void (*GetViewAngles_t)(float* pitch, float* yaw);
+GetViewAngles_t original_GetViewAngles;
+
+void hooked_GetViewAngles(float* pitch, float* yaw) {
+    if (aim_key_pressed) {
+        Player* target = FindNearestEnemy();
+        if (target) {
+            CalculateAimAngles(target->head_position, pitch, yaw);
+            return;
+        }
+    }
+    original_GetViewAngles(pitch, yaw);
+}
+
+// 4. Speed Hack
+typedef void (*UpdatePlayerPosition_t)(Player* p, float deltaTime);
+void hooked_UpdatePlayerPosition(Player* p, float deltaTime) {
+    if (p == local_player && speed_hack_enabled) {
+        deltaTime *= 3.0f;  // Move 3x faster
+    }
+    original_UpdatePlayerPosition(p, deltaTime);
+}
+                </div>
+                
+                <h3>🛡️ Anti-Cheat & Security</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. API Call Monitoring
+typedef HANDLE (*CreateFile_t)(LPCWSTR, DWORD, DWORD, ...);
+CreateFile_t original_CreateFile;
+
+HANDLE hooked_CreateFile(LPCWSTR filename, DWORD access, ...) {
+    // Log and analyze file access
+    LogFileAccess(GetCurrentProcessId(), filename, access);
+    
+    // Block suspicious files
+    if (IsSuspiciousFile(filename)) {
+        SetLastError(ERROR_ACCESS_DENIED);
+        return INVALID_HANDLE_VALUE;
+    }
+    
+    return original_CreateFile(filename, access, ...);
+}
+
+// 2. Process Protection
+typedef BOOL (*OpenProcess_t)(DWORD, BOOL, DWORD);
+BOOL hooked_OpenProcess(DWORD access, BOOL inherit, DWORD pid) {
+    // Prevent debuggers from attaching
+    if (pid == GetCurrentProcessId() && 
+        (access & PROCESS_VM_READ || access & PROCESS_VM_WRITE)) {
+        SetLastError(ERROR_ACCESS_DENIED);
+        return NULL;
+    }
+    return original_OpenProcess(access, inherit, pid);
+}
+
+// 3. Screenshot Protection
+typedef BOOL (*BitBlt_t)(HDC, int, int, int, int, HDC, int, int, DWORD);
+BOOL hooked_BitBlt(HDC hdcDest, int x, int y, int cx, int cy, 
+                   HDC hdcSrc, int xSrc, int ySrc, DWORD rop) {
+    // Black out sensitive areas before screenshot
+    if (IsScreenCapture(hdcDest)) {
+        HideSensitiveContent();
+    }
+    BOOL result = original_BitBlt(...);
+    RestoreSensitiveContent();
+    return result;
+}
+                </div>
+                
+                <h3>🔍 Reverse Engineering & Analysis</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. API Call Tracing
+typedef int (*WSASend_t)(SOCKET, LPWSABUF, DWORD, ...);
+int hooked_WSASend(SOCKET s, LPWSABUF buffers, DWORD count, ...) {
+    printf("[TRACE] WSASend: socket=%d, bytes=%d\n", s, buffers->len);
+    HexDump(buffers->buf, buffers->len);  // See what's being sent
+    return original_WSASend(s, buffers, count, ...);
+}
+
+// 2. Encryption Key Extraction
+typedef void (*DecryptData_t)(uint8_t* data, size_t len, uint8_t* key);
+void hooked_DecryptData(uint8_t* data, size_t len, uint8_t* key) {
+    printf("[KEY FOUND] Decryption key: ");
+    for(int i = 0; i < 32; i++) printf("%02X ", key[i]);
+    printf("\n");
+    SaveKey(key);  // Save for later use
+    original_DecryptData(data, len, key);
+}
+
+// 3. Protocol Analysis
+typedef int (*SendPacket_t)(int type, void* data, int size);
+int hooked_SendPacket(int type, void* data, int size) {
+    LogPacket("SEND", type, data, size);
+    
+    // Learn protocol structure
+    switch(type) {
+        case 0x100: ParseLoginPacket(data); break;
+        case 0x200: ParseChatPacket(data); break;
+        case 0x300: ParseMovementPacket(data); break;
+    }
+    
+    return original_SendPacket(type, data, size);
+}
+                </div>
+                
+                <h3>🎬 Media & Streaming</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. Video Stream Capture
+typedef void (*RenderFrame_t)(VideoFrame* frame);
+void hooked_RenderFrame(VideoFrame* frame) {
+    if (recording_enabled) {
+        // Capture frame before it's displayed
+        SaveFrameToFile(frame);
+        encoder->AddFrame(frame);
+    }
+    
+    // Apply filters
+    if (filter_enabled) {
+        ApplyColorCorrection(frame);
+        ApplyWatermark(frame);
+    }
+    
+    original_RenderFrame(frame);
+}
+
+// 2. Audio Processing
+typedef void (*PlayAudio_t)(int16_t* samples, int count);
+void hooked_PlayAudio(int16_t* samples, int count) {
+    // Record audio
+    if (recording) WriteToWAV(samples, count);
+    
+    // Apply effects
+    if (effects_enabled) {
+        ApplyEqualizer(samples, count);
+        ApplyReverb(samples, count);
+    }
+    
+    // Volume control
+    for(int i = 0; i < count; i++) {
+        samples[i] = (int16_t)(samples[i] * volume_multiplier);
+    }
+    
+    original_PlayAudio(samples, count);
+}
+
+// 3. DRM Bypass (Educational)
+typedef bool (*CheckLicense_t)(const char* key);
+bool hooked_CheckLicense(const char* key) {
+    printf("[DRM] License check with key: %s\n", key);
+    // return true;  // Would bypass check (don't do this!)
+    return original_CheckLicense(key);
+}
+                </div>
+                
+                <h3>🚀 Performance & Optimization</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. Memory Allocation Profiling
+typedef void* (*malloc_t)(size_t size);
+malloc_t original_malloc;
+
+typedef struct {
+    void* address;
+    size_t size;
+    char stack_trace[256];
+    uint64_t timestamp;
+} AllocationInfo;
+
+std::map<void*, AllocationInfo> allocations;
+
+void* hooked_malloc(size_t size) {
+    void* ptr = original_malloc(size);
+    
+    if (ptr && profiling_enabled) {
+        AllocationInfo info;
+        info.address = ptr;
+        info.size = size;
+        info.timestamp = GetTimestamp();
+        CaptureStackTrace(info.stack_trace);
+        
+        allocations[ptr] = info;
+        total_allocated += size;
+        
+        if (size > largest_allocation) {
+            largest_allocation = size;
+            printf("[MEMORY] New largest allocation: %zu bytes\n", size);
+        }
+    }
+    
+    return ptr;
+}
+
+// 2. Function Timing
+typedef void (*ExpensiveFunction_t)(void);
+void hooked_ExpensiveFunction(void) {
+    uint64_t start = __rdtsc();  // CPU timestamp counter
+    original_ExpensiveFunction();
+    uint64_t elapsed = __rdtsc() - start;
+    
+    function_times.push_back(elapsed);
+    if (elapsed > slowest_call) {
+        printf("[PERF] Slow call detected: %llu cycles\n", elapsed);
+        DumpCallStack();
+    }
+}
+
+// 3. Cache Optimization
+typedef void (*ProcessData_t)(void* data, size_t size);
+void hooked_ProcessData(void* data, size_t size) {
+    // Prefetch data for better cache performance
+    for(size_t i = 0; i < size; i += 64) {
+        _mm_prefetch((char*)data + i + 256, _MM_HINT_T0);
+    }
+    
+    original_ProcessData(data, size);
+}
+                </div>
+                
+                <h3>🔧 Debugging & Development</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. Crash Handler
+typedef void (*ProblematicFunction_t)(void* ptr);
+void hooked_ProblematicFunction(void* ptr) {
+    // Add safety checks
+    if (!ptr) {
+        printf("[DEBUG] NULL pointer passed to ProblematicFunction!\n");
+        DumpCallStack();
+        return;  // Prevent crash
+    }
+    
+    __try {
+        original_ProblematicFunction(ptr);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        printf("[CRASH] Exception in ProblematicFunction with ptr=%p\n", ptr);
+        SaveCrashDump();
+    }
+}
+
+// 2. State Validation
+typedef void (*UpdateGameState_t)(GameState* state);
+void hooked_UpdateGameState(GameState* state) {
+    GameState backup = *state;  // Save state
+    
+    original_UpdateGameState(state);
+    
+    // Validate state changes
+    if (state->player_health > state->max_health) {
+        printf("[BUG] Health overflow: %d > %d\n", 
+               state->player_health, state->max_health);
+        *state = backup;  // Restore valid state
+    }
+}
+
+// 3. Test Injection
+typedef int (*ComplexCalculation_t)(int a, int b);
+int hooked_ComplexCalculation(int a, int b) {
+    if (test_mode) {
+        // Return known test values
+        return test_values[test_index++];
+    }
+    return original_ComplexCalculation(a, b);
+}
+                </div>
+                
+                <h3>🌐 Network & Communication</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. Packet Manipulation
+typedef int (*send_t)(int sockfd, const void* buf, size_t len, int flags);
+int hooked_send(int sockfd, const void* buf, size_t len, int flags) {
+    uint8_t* modified = (uint8_t*)malloc(len);
+    memcpy(modified, buf, len);
+    
+    // Modify packet content
+    if (len > 4 && *(uint32_t*)buf == 0x12345678) {  // Magic header
+        // Change player position in movement packet
+        if (modified[4] == PACKET_MOVEMENT) {
+            float* x = (float*)&modified[8];
+            float* y = (float*)&modified[12];
+            *x += teleport_offset_x;
+            *y += teleport_offset_y;
+        }
+    }
+    
+    int result = original_send(sockfd, modified, len, flags);
+    free(modified);
+    return result;
+}
+
+// 2. Man-in-the-Middle
+typedef int (*SSL_write_t)(SSL* ssl, const void* buf, int num);
+int hooked_SSL_write(SSL* ssl, const void* buf, int num) {
+    // Log encrypted data before sending
+    printf("[SSL] Sending %d bytes\n", num);
+    if (strstr((char*)buf, "password")) {
+        printf("[ALERT] Password detected in SSL stream!\n");
+    }
+    return original_SSL_write(ssl, buf, num);
+}
+
+// 3. Latency Simulation
+typedef int (*recv_t)(int sockfd, void* buf, size_t len, int flags);
+int hooked_recv(int sockfd, void* buf, size_t len, int flags) {
+    if (simulate_lag) {
+        Sleep(artificial_latency_ms);
+    }
+    
+    int received = original_recv(sockfd, buf, len, flags);
+    
+    if (packet_loss_simulation && (rand() % 100) < packet_loss_percent) {
+        errno = EAGAIN;  // Simulate packet loss
+        return -1;
+    }
+    
+    return received;
+}
+                </div>
+                
+                <h3>💾 File System & I/O</h3>
+                
+                <div class="code-block" data-lang="C">
+// 1. File Access Redirection
+typedef FILE* (*fopen_t)(const char* path, const char* mode);
+FILE* hooked_fopen(const char* path, const char* mode) {
+    // Redirect config files to custom location
+    if (strstr(path, "config.ini")) {
+        char new_path[256];
+        sprintf(new_path, "mods/custom_%s", path);
+        printf("[MOD] Redirecting %s to %s\n", path, new_path);
+        return original_fopen(new_path, mode);
+    }
+    
+    // Log file access
+    LogFileAccess(path, mode);
+    
+    return original_fopen(path, mode);
+}
+
+// 2. Save File Manipulation
+typedef int (*SaveGame_t)(const char* filename, GameSave* save);
+int hooked_SaveGame(const char* filename, GameSave* save) {
+    // Modify save data
+    save->money = 999999999;
+    save->level = 100;
+    save->unlocked_everything = true;
+    
+    // Create backup
+    char backup[256];
+    sprintf(backup, "%s.backup", filename);
+    original_SaveGame(backup, save);
+    
+    return original_SaveGame(filename, save);
+}
+
+// 3. Virtual File System
+typedef int (*ReadFile_t)(HANDLE file, void* buffer, DWORD size, ...);
+int hooked_ReadFile(HANDLE file, void* buffer, DWORD size, ...) {
+    // Serve files from memory instead of disk
+    VirtualFile* vf = FindVirtualFile(file);
+    if (vf) {
+        memcpy(buffer, vf->data + vf->position, size);
+        vf->position += size;
+        return size;
+    }
+    
+    return original_ReadFile(file, buffer, size, ...);
+}
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Legal & Ethical Warning:</strong> 
+                    These examples are for educational purposes only. Using hooks to:
+                    <ul style="margin-left: 20px;">
+                        <li>Cheat in online games violates ToS and can result in bans</li>
+                        <li>Bypass DRM or licenses is illegal in most jurisdictions</li>
+                        <li>Steal data or passwords is criminal</li>
+                        <li>Modify proprietary software may violate EULAs</li>
+                    </ul>
+                    Always respect software licenses, terms of service, and laws.
+                </div>
+            </section>
+            
+            <section id="implementation">
+                <h2>Implementation Details</h2>
+                
+                <h3>Step-by-Step Inline Hook Implementation</h3>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> This is for educational purposes. Always respect software licenses and laws.
+                </div>
+                
+                <h4>Step 1: Analyzing the Target Function</h4>
+                <div class="code-block" data-lang="C">
+// Use a disassembler to analyze instruction boundaries
+size_t calculate_minimum_hook_size(void* function) {
+    size_t size = 0;
+    uint8_t* code = (uint8_t*)function;
+    
+    // We need at least 14 bytes for absolute jump on x64
+    // 5 bytes for relative jump on x86
+    #ifdef _WIN64
+        const size_t MIN_SIZE = 14;
+    #else
+        const size_t MIN_SIZE = 5;
+    #endif
+    
+    // Use length disassembler engine (LDE)
+    while (size < MIN_SIZE) {
+        size_t instruction_len = get_instruction_length(code + size);
+        if (instruction_len == 0) return 0; // Invalid instruction
+        size += instruction_len;
+    }
+    
+    return size;
+}
+                </div>
+                
+                <h4>Step 2: Creating the Trampoline</h4>
+                <div class="code-block" data-lang="C">
+// Trampoline = stolen bytes + jump back to original
+void* create_trampoline(void* original, size_t stolen_size) {
+    // Allocate executable memory
+    void* trampoline = VirtualAlloc(NULL, 64, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    
+    // Copy stolen bytes
+    memcpy(trampoline, original, stolen_size);
+    
+    // Add jump back to original function + stolen_size
+    uint8_t* tramp_end = (uint8_t*)trampoline + stolen_size;
+    write_absolute_jump(tramp_end, (uint8_t*)original + stolen_size);
+    
+    return trampoline;
+}
+
+// Write absolute jump (14 bytes on x64)
+void write_absolute_jump(void* from, void* to) {
+    uint8_t jump_code[] = {
+        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,  // jmp [rip+0]
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // absolute address
+    };
+    *(uint64_t*)(jump_code + 6) = (uint64_t)to;
+    memcpy(from, jump_code, sizeof(jump_code));
+}
+                </div>
+                
+                <h4>Step 3: Installing the Hook</h4>
+                <div class="code-block" data-lang="C">
+bool install_hook(hook_info_t* hook) {
+    // 1. Calculate hook size
+    hook->stolen_size = calculate_minimum_hook_size(hook->target);
+    if (hook->stolen_size == 0) return false;
+    
+    // 2. Save original bytes
+    memcpy(hook->original_bytes, hook->target, hook->stolen_size);
+    
+    // 3. Create trampoline
+    hook->trampoline = create_trampoline(hook->target, hook->stolen_size);
+    
+    // 4. Make target writable
+    DWORD old_protect;
+    VirtualProtect(hook->target, hook->stolen_size, PAGE_EXECUTE_READWRITE, &old_protect);
+    
+    // 5. Write hook jump
+    write_absolute_jump(hook->target, hook->detour);
+    
+    // 6. Fill remaining bytes with NOPs
+    if (hook->stolen_size > 14) {
+        memset((uint8_t*)hook->target + 14, 0x90, hook->stolen_size - 14);
+    }
+    
+    // 7. Restore protection
+    VirtualProtect(hook->target, hook->stolen_size, old_protect, &old_protect);
+    
+    hook->enabled = true;
+    return true;
+}
+                </div>
+                
+                <h4>Step 4: Using the Hook</h4>
+                <div class="code-block" data-lang="C">
+// Original function signature
+typedef int (*MessageBoxA_t)(HWND, LPCSTR, LPCSTR, UINT);
+MessageBoxA_t original_MessageBoxA;
+
+// Our hook function
+int WINAPI hooked_MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
+    // Log the call
+    printf("[HOOK] MessageBoxA called: '%s' - '%s'\n", lpCaption, lpText);
+    
+    // Modify parameters if desired
+    if (strstr(lpText, "error")) {
+        lpText = "Error message intercepted!";
+    }
+    
+    // Call original through trampoline
+    return original_MessageBoxA(hWnd, lpText, lpCaption, uType);
+}
+
+// Installation
+void setup_messagebox_hook() {
+    hook_info_t hook = {0};
+    hook.target = GetProcAddress(GetModuleHandleA("user32.dll"), "MessageBoxA");
+    hook.detour = hooked_MessageBoxA;
+    
+    if (install_hook(&hook)) {
+        original_MessageBoxA = (MessageBoxA_t)hook.trampoline;
+        printf("Hook installed successfully!\n");
+    }
+}
+                </div>
+            </section>
+            
+            <section id="examples">
+                <h2>Practical Examples</h2>
+                
+                <h3>Example 1: Function Call Logger</h3>
+                <div class="code-block" data-lang="C">
+// Generic function call logger
+typedef struct {
+    const char* name;
+    void* address;
+    int param_count;
+    int calls;
+} function_info_t;
+
+function_info_t monitored_functions[] = {
+    {"CreateFileW", NULL, 7, 0},
+    {"ReadFile", NULL, 5, 0},
+    {"WriteFile", NULL, 5, 0},
+    {NULL, NULL, 0, 0}
+};
+
+// Generic hook that logs any function
+void* generic_logger_hook(function_info_t* info, ...) {
+    va_list args;
+    va_start(args, info);
+    
+    printf("[LOG] %s called (%d times total)\n", info->name, ++info->calls);
+    
+    // Log parameters based on count
+    for (int i = 0; i < info->param_count; i++) {
+        void* param = va_arg(args, void*);
+        printf("  Param %d: %p\n", i, param);
+    }
+    
+    va_end(args);
+    
+    // Would call original here through trampoline
+    return NULL;
+}
+                </div>
+                
+                <h3>Example 2: Performance Profiler</h3>
+                <div class="code-block" data-lang="C">
+// Hook that measures function execution time
+typedef struct {
+    const char* name;
+    uint64_t total_time;
+    uint64_t call_count;
+    uint64_t min_time;
+    uint64_t max_time;
+} profiler_data_t;
+
+#define PROFILE_HOOK(func_name, original_type, ...) \
+    profiler_data_t prof_##func_name = {#func_name, 0, 0, UINT64_MAX, 0}; \
+    original_type orig_##func_name; \
+    \
+    auto hooked_##func_name(__VA_ARGS__) -> decltype(orig_##func_name(__VA_ARGS__)) { \
+        uint64_t start = get_timestamp(); \
+        auto result = orig_##func_name(__VA_ARGS__); \
+        uint64_t elapsed = get_timestamp() - start; \
+        \
+        prof_##func_name.total_time += elapsed; \
+        prof_##func_name.call_count++; \
+        prof_##func_name.min_time = min(prof_##func_name.min_time, elapsed); \
+        prof_##func_name.max_time = max(prof_##func_name.max_time, elapsed); \
+        \
+        return result; \
+    }
+
+// Usage
+PROFILE_HOOK(malloc, void*(*)(size_t), size_t size)
+
+void print_profile_stats() {
+    printf("Function: %s\n", prof_malloc.name);
+    printf("  Calls: %llu\n", prof_malloc.call_count);
+    printf("  Avg time: %.2f us\n", prof_malloc.total_time / prof_malloc.call_count / 1000.0);
+    printf("  Min time: %.2f us\n", prof_malloc.min_time / 1000.0);
+    printf("  Max time: %.2f us\n", prof_malloc.max_time / 1000.0);
+}
+                </div>
+                
+                <h3>Example 3: Security Monitor</h3>
+                <div class="code-block" data-lang="C">
+// Hook sensitive functions for security monitoring
+typedef struct {
+    char process_name[256];
+    char file_path[1024];
+    DWORD access_rights;
+    time_t timestamp;
+} file_access_log_t;
+
+std::vector<file_access_log_t> access_logs;
+
+HANDLE WINAPI hooked_CreateFileW(
+    LPCWSTR lpFileName,
+    DWORD dwDesiredAccess,
+    DWORD dwShareMode,
+    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    DWORD dwCreationDisposition,
+    DWORD dwFlagsAndAttributes,
+    HANDLE hTemplateFile
+) {
+    // Log the access attempt
+    file_access_log_t log = {0};
+    GetModuleFileNameA(NULL, log.process_name, sizeof(log.process_name));
+    WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, log.file_path, sizeof(log.file_path), NULL, NULL);
+    log.access_rights = dwDesiredAccess;
+    log.timestamp = time(NULL);
+    
+    access_logs.push_back(log);
+    
+    // Check for suspicious patterns
+    if (wcsstr(lpFileName, L"\\System32\\") && (dwDesiredAccess & GENERIC_WRITE)) {
+        printf("[SECURITY] Warning: Write access to System32 file: %ls\n", lpFileName);
+        
+        // Could block the access here
+        // SetLastError(ERROR_ACCESS_DENIED);
+        // return INVALID_HANDLE_VALUE;
+    }
+    
+    // Call original
+    return original_CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, 
+                               lpSecurityAttributes, dwCreationDisposition, 
+                               dwFlagsAndAttributes, hTemplateFile);
+}
+                </div>
+            </section>
+            
+            <section id="advanced">
+                <h2>Advanced Topics</h2>
+                
+                <h3>Thread Safety and Synchronization</h3>
+                <div class="code-block" data-lang="C">
+// Thread-safe hook installation
+class ThreadSafeHook {
+private:
+    std::atomic<bool> is_hooking{false};
+    std::atomic<int> hook_depth{0};
+    std::mutex install_mutex;
+    
+public:
+    bool install() {
+        std::lock_guard<std::mutex> lock(install_mutex);
+        
+        if (is_hooking) return false;
+        is_hooking = true;
+        
+        // Suspend all threads except current
+        std::vector<HANDLE> threads = suspend_other_threads();
+        
+        // Install hook
+        bool success = install_hook_internal();
+        
+        // Resume threads
+        for (HANDLE thread : threads) {
+            ResumeThread(thread);
+        }
+        
+        return success;
+    }
+    
+    void enter_hook() {
+        hook_depth++;
+    }
+    
+    void leave_hook() {
+        hook_depth--;
+    }
+    
+    bool is_recursive() {
+        return hook_depth > 1;
+    }
+};
+                </div>
+                
+                <h3>Anti-Detection Techniques</h3>
+                <div class="info">
+                    <strong>🛡️ Stealth Hooking Methods:</strong>
+                    <ul style="margin-left: 20px;">
+                        <li>Use hardware breakpoints instead of code modification</li>
+                        <li>Hook from kernel mode to avoid user-mode detection</li>
+                        <li>Implement hook timing randomization</li>
+                        <li>Use code cave hooking (finding unused space)</li>
+                        <li>Implement hook polymorphism (changing hook patterns)</li>
+                    </ul>
+                </div>
+                
+                <h3>Cross-Platform Considerations</h3>
+                <table>
+                    <tr>
+                        <th>Platform</th>
+                        <th>Memory Protection</th>
+                        <th>Calling Convention</th>
+                        <th>Hook Size</th>
+                    </tr>
+                    <tr>
+                        <td>Windows x64</td>
+                        <td>VirtualProtect</td>
+                        <td>Microsoft x64 (RCX, RDX, R8, R9)</td>
+                        <td>14 bytes (absolute jump)</td>
+                    </tr>
+                    <tr>
+                        <td>Linux x64</td>
+                        <td>mprotect</td>
+                        <td>System V AMD64 (RDI, RSI, RDX, RCX)</td>
+                        <td>14 bytes (absolute jump)</td>
+                    </tr>
+                    <tr>
+                        <td>macOS x64</td>
+                        <td>mprotect</td>
+                        <td>System V AMD64</td>
+                        <td>14 bytes (absolute jump)</td>
+                    </tr>
+                    <tr>
+                        <td>32-bit x86</td>
+                        <td>Platform specific</td>
+                        <td>cdecl/stdcall/fastcall</td>
+                        <td>5 bytes (relative jump)</td>
+                    </tr>
+                </table>
+                
+                <h3>Common Pitfalls and Solutions</h3>
+                <div class="warning">
+                    <strong>⚠️ Common Issues:</strong>
+                    <ol style="margin-left: 20px;">
+                        <li><strong>Race Conditions:</strong> Always suspend threads when installing hooks</li>
+                        <li><strong>Instruction Splitting:</strong> Use proper disassembly to find boundaries</li>
+                        <li><strong>Recursive Hooks:</strong> Implement recursion detection</li>
+                        <li><strong>Memory Leaks:</strong> Properly free trampolines when unhooking</li>
+                        <li><strong>Stack Alignment:</strong> Maintain 16-byte alignment on x64</li>
+                        <li><strong>CPU Cache:</strong> Flush instruction cache after patching</li>
+                    </ol>
+                </div>
+                
+                <h3>Hook Chaining</h3>
+                <div class="code-block" data-lang="C">
+// Support multiple hooks on the same function
+class HookChain {
+    struct ChainNode {
+        void* hook_function;
+        void* next_function;  // Points to next hook or original
+        int priority;
+    };
+    
+    std::vector<ChainNode> chain;
+    void* original_function;
+    
+public:
+    void add_hook(void* hook, int priority) {
+        ChainNode node = {hook, nullptr, priority};
+        chain.push_back(node);
+        
+        // Sort by priority
+        std::sort(chain.begin(), chain.end(), 
+            [](const ChainNode& a, const ChainNode& b) {
+                return a.priority > b.priority;
+            });
+        
+        // Update next pointers
+        for (size_t i = 0; i < chain.size(); i++) {
+            if (i < chain.size() - 1) {
+                chain[i].next_function = chain[i + 1].hook_function;
+            } else {
+                chain[i].next_function = original_function;
+            }
+        }
+    }
+    
+    void* get_first_hook() {
+        return chain.empty() ? original_function : chain[0].hook_function;
+    }
+};
+                </div>
+            </section>
+            
+            <section>
+                <h2>Interactive Demo</h2>
+                <div class="interactive-demo">
+                    <h3>Try It Yourself!</h3>
+                    <p>Click the button below to see a simulated hook in action:</p>
+                    
+                    <button onclick="simulateHook()">Simulate Function Hook</button>
+                    <button onclick="resetDemo()">Reset Demo</button>
+                    
+                    <div id="demo-output" style="margin-top: 20px; padding: 15px; background: white; border-radius: 5px; font-family: monospace; min-height: 200px;">
+                        <div id="demo-log"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <section>
+                <h2>Best Practices and Guidelines</h2>
+                
+                <div class="success">
+                    <strong>✅ DO's:</strong>
+                    <ul style="margin-left: 20px;">
+                        <li>Always save and restore CPU context properly</li>
+                        <li>Use atomic operations for thread safety</li>
+                        <li>Implement proper error handling</li>
+                        <li>Test hooks thoroughly in isolated environments</li>
+                        <li>Document your hooks and their purposes</li>
+                        <li>Use established hooking libraries when possible</li>
+                        <li>Respect software licenses and laws</li>
+                    </ul>
+                </div>
+                
+                <div class="warning">
+                    <strong>❌ DON'Ts:</strong>
+                    <ul style="margin-left: 20px;">
+                        <li>Don't hook functions you don't fully understand</li>
+                        <li>Don't forget to unhook when done</li>
+                        <li>Don't modify global state without synchronization</li>
+                        <li>Don't assume hook installation always succeeds</li>
+                        <li>Don't hook system-critical functions without care</li>
+                        <li>Don't use hooking for malicious purposes</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <section>
+                <h2>Popular Hooking Libraries</h2>
+                
+                <table>
+                    <tr>
+                        <th>Library</th>
+                        <th>Platform</th>
+                        <th>Language</th>
+                        <th>Features</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Microsoft Detours</strong></td>
+                        <td>Windows</td>
+                        <td>C/C++</td>
+                        <td>Professional, well-tested, transaction support</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MinHook</strong></td>
+                        <td>Windows</td>
+                        <td>C</td>
+                        <td>Lightweight, simple API, x64/x86 support</td>
+                    </tr>
+                    <tr>
+                        <td><strong>frida</strong></td>
+                        <td>Cross-platform</td>
+                        <td>JavaScript/Python</td>
+                        <td>Dynamic instrumentation, scripting support</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PLT/GOT Hooking</strong></td>
+                        <td>Linux</td>
+                        <td>C</td>
+                        <td>ELF binary hooking, LD_PRELOAD</td>
+                    </tr>
+                    <tr>
+                        <td><strong>mhook</strong></td>
+                        <td>Windows</td>
+                        <td>C++</td>
+                        <td>Simple, supports x64</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <section>
+                <h2>Conclusion</h2>
+                <p>
+                    Function hooking is a powerful technique that opens up many possibilities for debugging, profiling, and extending software functionality. 
+                    While it requires careful implementation and consideration of various technical challenges, mastering function hooking provides invaluable 
+                    insights into how software works at a low level.
+                </p>
+                
+                <div class="info">
+                    <strong>🎓 Key Takeaways:</strong>
+                    <ul style="margin-left: 20px;">
+                        <li>Function hooking intercepts and modifies function behavior at runtime</li>
+                        <li>Different hook types suit different scenarios</li>
+                        <li>Proper implementation requires understanding of assembly and memory management</li>
+                        <li>Thread safety and error handling are crucial</li>
+                        <li>Use established libraries when possible</li>
+                        <li>Always respect legal and ethical boundaries</li>
+                    </ul>
+                </div>
+                
+                <h3>Further Learning Resources</h3>
+                <ul style="margin-left: 30px;">
+                    <li>📚 "Windows System Programming" by Johnson M. Hart</li>
+                    <li>📚 "The Rootkit Arsenal" by Bill Blunden</li>
+                    <li>🌐 Intel x86/x64 Architecture Manuals</li>
+                    <li>🌐 Microsoft Detours Documentation</li>
+                    <li>🔧 IDA Pro / Ghidra for reverse engineering</li>
+                    <li>🔧 WinAPIOverride / API Monitor for API tracing</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.tab');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+        
+        let demoStep = 0;
+        function simulateHook() {
+            const log = document.getElementById('demo-log');
+            
+            switch(demoStep) {
+                case 0:
+                    log.innerHTML = '<strong>Starting hook simulation...</strong><br>';
+                    log.innerHTML += '1. Target function identified: MessageBox()<br>';
+                    demoStep++;
+                    setTimeout(simulateHook, 500);
+                    break;
+                case 1:
+                    log.innerHTML += '2. Analyzing function prologue...<br>';
+                    log.innerHTML += '   Found: push ebp; mov ebp, esp (5 bytes)<br>';
+                    demoStep++;
+                    setTimeout(simulateHook, 500);
+                    break;
+                case 2:
+                    log.innerHTML += '3. Creating trampoline at 0x00420000<br>';
+                    log.innerHTML += '   Copying original bytes...<br>';
+                    demoStep++;
+                    setTimeout(simulateHook, 500);
+                    break;
+                case 3:
+                    log.innerHTML += '4. Installing hook jump at function entry<br>';
+                    log.innerHTML += '   Writing: JMP 0x00410000 (our hook)<br>';
+                    demoStep++;
+                    setTimeout(simulateHook, 500);
+                    break;
+                case 4:
+                    log.innerHTML += '5. <span style="color: green;">✓ Hook installed successfully!</span><br><br>';
+                    log.innerHTML += '<strong>Testing hook:</strong><br>';
+                    demoStep++;
+                    setTimeout(simulateHook, 500);
+                    break;
+                case 5:
+                    log.innerHTML += '→ Program calls MessageBox("Hello World")<br>';
+                    log.innerHTML += '← Hook intercepts: Logging call...<br>';
+                    log.innerHTML += '← Hook modifies: Changed to "Hello from Hook!"<br>';
+                    log.innerHTML += '← Hook calls original through trampoline<br>';
+                    log.innerHTML += '<span style="color: blue;">✓ MessageBox displays: "Hello from Hook!"</span><br>';
+                    demoStep = 0;
+                    break;
+            }
+        }
+        
+        function resetDemo() {
+            demoStep = 0;
+            document.getElementById('demo-log').innerHTML = 'Click "Simulate Function Hook" to start...';
+        }
+        
+        // Initialize
+        resetDemo();
+    </script>
+</body>
+</html>

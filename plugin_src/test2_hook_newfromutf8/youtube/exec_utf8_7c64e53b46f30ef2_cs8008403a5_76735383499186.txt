@@ -1,0 +1,4 @@
+expires: Sun, 28 Sep 2025 16:18:03 GMT
+cache-control: public, max-age=3000
+last-modified: Thu, 30 Jan 2025 18:45:18 GMT
+content-type: text/html; charset=UTF-8

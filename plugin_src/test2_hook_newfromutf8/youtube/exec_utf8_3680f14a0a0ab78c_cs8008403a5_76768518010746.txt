@@ -1,0 +1,13 @@
+status: 200
+content-type: application/json; charset=UTF-8
+vary: Origin
+vary: X-Origin
+vary: Referer
+content-encoding: gzip
+date: Sun, 28 Sep 2025 16:17:58 GMT
+server: scaffolding on HTTPServer2
+content-length: 18244
+x-xss-protection: 0
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
