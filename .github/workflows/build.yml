@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: plugin_source
 
       - name: Checkout GoldHEN Plugins Repository
         uses: actions/checkout@v4
@@ -56,11 +57,7 @@ jobs:
       - name: Set up plugin in repository structure
         run: |
           rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock
-          cp -r $GITHUB_WORKSPACE GoldHEN_Plugins_Repository/plugin_src/yt_adblock
-          # Remove nested checkout artifacts
-          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/GoldHEN_Plugins_Repository
-          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/SDK
-          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/OpenOrbis
+          cp -r plugin_source GoldHEN_Plugins_Repository/plugin_src/yt_adblock
 
       - name: Build plugin (Release)
         working-directory: GoldHEN_Plugins_Repository
@@ -92,9 +89,10 @@ jobs:
 
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: plugin_source
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v1.$(git rev-list HEAD --count)-$(echo ${GITHUB_SHA} | cut -c1-8)"
-          cp GoldHEN_Plugins_Repository/bin/plugins/prx_final/yt_adblock.prx ./yt_adblock.prx
+          cp ../GoldHEN_Plugins_Repository/bin/plugins/prx_final/yt_adblock.prx ./yt_adblock.prx
           gh release create "$TAG" yt_adblock.prx --target "$GITHUB_SHA" -t "$TAG" --generate-notes
