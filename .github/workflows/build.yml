@@ -1,0 +1,100 @@
+name: Build Plugin
+
+on:
+  push:
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.txt"
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout GoldHEN Plugins Repository
+        uses: actions/checkout@v4
+        with:
+          repository: GoldHEN/GoldHEN_Plugins_Repository
+          path: GoldHEN_Plugins_Repository
+
+      - name: Checkout GoldHEN Plugins SDK
+        uses: actions/checkout@v4
+        with:
+          repository: GoldHEN/GoldHEN_Plugins_SDK
+          path: SDK
+
+      - name: Install dependencies
+        run: sudo apt-get install -y llvm lld
+
+      - name: Download OpenOrbis Toolchain
+        run: |
+          curl -sL https://github.com/illusion0001/OpenOrbis-PS4-Toolchain/releases/latest/download/toolchain.tar.gz | tar xz -C ./
+          echo "OO_PS4_TOOLCHAIN=$GITHUB_WORKSPACE/OpenOrbis/PS4Toolchain" >> $GITHUB_ENV
+
+      - name: Build SDK
+        working-directory: SDK
+        run: |
+          echo "GOLDHEN_SDK=$(pwd)" >> $GITHUB_ENV
+          make PRINTF=1 DEBUGFLAGS=1
+
+      - name: Set up plugin in repository structure
+        run: |
+          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock
+          cp -r $GITHUB_WORKSPACE GoldHEN_Plugins_Repository/plugin_src/yt_adblock
+          # Remove nested checkout artifacts
+          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/GoldHEN_Plugins_Repository
+          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/SDK
+          rm -rf GoldHEN_Plugins_Repository/plugin_src/yt_adblock/OpenOrbis
+
+      - name: Build plugin (Release)
+        working-directory: GoldHEN_Plugins_Repository
+        run: |
+          mkdir -p bin/plugins/prx_final bin/plugins/elf_final
+          make -C plugin_src/yt_adblock clean
+          make -C plugin_src/yt_adblock PRINTF=1
+
+      - name: Build plugin (Debug)
+        working-directory: GoldHEN_Plugins_Repository
+        run: |
+          mkdir -p bin/plugins/prx_debug bin/plugins/elf_debug
+          make -C plugin_src/yt_adblock clean
+          make -C plugin_src/yt_adblock DEBUG=1 PRINTF=1
+
+      - name: Upload release PRX
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt_adblock_release
+          path: GoldHEN_Plugins_Repository/bin/plugins/prx_final/yt_adblock.prx
+          if-no-files-found: error
+
+      - name: Upload debug PRX
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt_adblock_debug
+          path: GoldHEN_Plugins_Repository/bin/plugins/prx_debug/yt_adblock.prx
+          if-no-files-found: error
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v1.$(git rev-list HEAD --count)-$(echo ${GITHUB_SHA} | cut -c1-8)"
+          cp GoldHEN_Plugins_Repository/bin/plugins/prx_final/yt_adblock.prx ./yt_adblock.prx
+          gh release create "$TAG" yt_adblock.prx --target "$GITHUB_SHA" -t "$TAG" --generate-notes
