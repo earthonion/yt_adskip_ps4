@@ -26,19 +26,6 @@ extern "C" void mh_log(const char* fmt, ...);
 #endif
 
 // Signature for HTMLScriptExecute function from Ghidra
-// 0097fb40: 55                    PUSH RBP
-// 0097fb41: 48 89 E5              MOV RBP,RSP
-// 0097fb44: 41 57                 PUSH R15
-// 0097fb46: 41 56                 PUSH R14
-// 0097fb48: 41 55                 PUSH R13
-// 0097fb4a: 41 54                 PUSH R12
-// 0097fb4c: 53                    PUSH RBX
-// 0097fb4d: 48 81 EC D8 00 00 00  SUB RSP,0xd8
-// 0097fb54: 49 89 D5              MOV R13,RDX
-// 0097fb57: 48 8B 15 ?? ?? ?? ??  MOV RDX,[stack_chk_guard] (wildcard)
-// 0097fb5e: 48 8B 02              MOV RAX,[RDX]
-// 0097fb61: 48 89 45 D0           MOV [RBP-0x30],RAX
-// 0097fb65: 80 BF 10 05 00 00 00  CMP byte ptr [RDI+0x510],0x0
 #define HTML_EXECUTE_SIG "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 81 EC D8 00 00 00 49 89 D5 48 8B 15 ?? ?? ?? ?? 48 8B 02 48 89 45 D0 80 BF 10 05 00 00 00"
 #define HTML_EXECUTE_SIG_OFFSET 0
 #define HTML_EXECUTE_ADDR_FALLBACK 0x0097fb40
@@ -48,6 +35,7 @@ using ExecuteFn   = void (*)(void* self, long arg2, uint64_t arg3,
 
 static mh_hook_t  g_execute_hook{};
 static ExecuteFn  g_real_Execute   = nullptr;
+static void*      g_ret_gadget     = nullptr;
 
 static thread_local bool g_execute_reentry = false;
 
@@ -59,6 +47,7 @@ struct LiveInjection {
 static StringLikeLayout g_layout{};
 static std::vector<std::unique_ptr<LiveInjection>> g_live_injections;
 static bool g_direct_injection_done = false;
+static int g_hook_call_count = 0;
 
 namespace {
 
@@ -76,9 +65,16 @@ MH_DEFINE_THUNK(execute, my_HTMLScriptExecute)
 
 extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                                      char is_external) {
-  MH_LOG("[execute.call] self=%p arg2=%p arg3=%p external=%d", self,
-         (void*)(static_cast<uintptr_t>(arg2)), (void*)arg3, is_external ? 1 : 0);
+  g_hook_call_count++;
+  mh_log("[hook] ENTER #%d self=%p arg2=0x%lx arg3=0x%lx ext=%d\n",
+         g_hook_call_count, self, (unsigned long)arg2, (unsigned long)arg3,
+         is_external ? 1 : 0);
 
+  // Always redirect thunk's post-callback JMP to ret gadget
+  // so it doesn't double-execute the original function.
+  __mh_tramp_slot_execute = g_ret_gadget;
+
+  // After injection is done, just pass through to original.
   if (g_direct_injection_done) {
     g_execute_reentry = true;
     g_real_Execute(self, arg2, arg3, is_external);
@@ -86,24 +82,26 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
     return;
   }
 
+  // --- Injection path (first call only) ---
+
+  // Try to learn the string layout from args
   StringLikeLayout learned{};
   std::string temp_script;
 
   if (try_extract_script_from_candidate(static_cast<uint64_t>(arg2), temp_script, &learned)) {
-    MH_LOG("[extract] from arg2=%p learned.valid=%d", (void*)static_cast<uintptr_t>(arg2), learned.valid ? 1 : 0);
+    mh_log("[hook] extracted from arg2, learned.valid=%d len=%zu\n",
+           learned.valid ? 1 : 0, temp_script.size());
   } else if (try_extract_script_from_candidate(arg3, temp_script, &learned)) {
-    MH_LOG("[extract] from arg3=%p learned.valid=%d", (void*)arg3, learned.valid ? 1 : 0);
+    mh_log("[hook] extracted from arg3, learned.valid=%d len=%zu\n",
+           learned.valid ? 1 : 0, temp_script.size());
+  } else {
+    mh_log("[hook] extract failed for both args\n");
   }
 
   if (learned.valid) {
-    bool changed = !g_layout.valid || g_layout.data_off != learned.data_off ||
-                   g_layout.size_off != learned.size_off ||
-                   g_layout.cap_off  != learned.cap_off;
     g_layout = learned;
-    if (changed) {
-      MH_LOG("[layout] data@+0x%zx size@+0x%zx cap@+0x%zx span=0x%zx",
-             g_layout.data_off, g_layout.size_off, g_layout.cap_off, g_layout.header_span);
-    }
+    mh_log("[hook] layout: data@+0x%zx size@+0x%zx cap@+0x%zx\n",
+           g_layout.data_off, g_layout.size_off, g_layout.cap_off);
   }
 
   uint64_t header_addr = 0;
@@ -113,7 +111,7 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
     header_addr = arg3;
   }
   if (!header_addr) {
-    MH_LOG("[inject.err] reason=no-header");
+    mh_log("[hook] BAIL: no canonical header addr\n");
     g_execute_reentry = true;
     g_real_Execute(self, arg2, arg3, is_external);
     g_execute_reentry = false;
@@ -121,7 +119,7 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
   }
 
   if (!ensure_js_payload_loaded()) {
-    MH_LOG("[execute.inject] payload unavailable");
+    mh_log("[hook] BAIL: payload unavailable\n");
     g_execute_reentry = true;
     g_real_Execute(self, arg2, arg3, is_external);
     g_execute_reentry = false;
@@ -130,17 +128,19 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
 
   const std::string& payload = get_js_payload();
   if (payload.empty()) {
-    MH_LOG("[execute.inject] payload empty after normalization");
+    mh_log("[hook] BAIL: payload empty\n");
     g_execute_reentry = true;
     g_real_Execute(self, arg2, arg3, is_external);
     g_execute_reentry = false;
     return;
   }
+  mh_log("[hook] payload loaded, %zu bytes\n", payload.size());
 
   StringLikeLayout layout = learned.valid ? learned : g_layout;
   if (!layout.valid) {
     std::string fallback_script;
     try_extract_script_from_candidate(header_addr, fallback_script, &layout);
+    mh_log("[hook] fallback extract: valid=%d\n", layout.valid ? 1 : 0);
   }
 
   constexpr size_t kProbe = 0x80;
@@ -152,7 +152,8 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                         layout.size_off + sizeof(uint64_t) <= header.size() &&
                         layout.cap_off  + sizeof(uint64_t) <= header.size();
   if (!layout_span_ok) {
-    MH_LOG("[inject.err] reason=layout-span");
+    mh_log("[hook] BAIL: layout invalid (valid=%d d=0x%zx s=0x%zx c=0x%zx)\n",
+           layout.valid ? 1 : 0, layout.data_off, layout.size_off, layout.cap_off);
     g_execute_reentry = true;
     g_real_Execute(self, arg2, arg3, is_external);
     g_execute_reentry = false;
@@ -165,6 +166,7 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
     return;
   }
 
+  // Build cloned header with our payload swapped in
   ensure_live_injection_budget();
   auto storage = std::make_unique<LiveInjection>();
   storage->header.assign(header.begin(), header.end());
@@ -183,25 +185,30 @@ extern "C" void my_HTMLScriptExecute(void* self, long arg2, uint64_t arg3,
                    static_cast<uint64_t>(std::max<size_t>(storage->payload.size(), 0x10)));
 
   void* cloned_header = storage->header.data();
-  log_preview_bounded(reinterpret_cast<const uint8_t*>(storage->payload.data()),
-                      storage->payload.size(), 96);
-  MH_LOG("[inject.direct] len=%zu header=%p data=%p",
-         storage->payload.size(), cloned_header, storage->payload.data());
-
   g_live_injections.push_back(std::move(storage));
 
-  // delay before invoking Execute so the target can settle
+  mh_log("[hook] INJECTING payload=%zu bytes header=%p\n",
+         payload.size(), cloned_header);
+
+  // Delay before injection so the Cobalt engine can settle
   sceKernelUsleep(3 * 1000 * 1000);
 
+  // Execute our injected JS payload (same approach as working GitHub version)
   g_execute_reentry = true;
   g_real_Execute(self,
                  static_cast<long>(reinterpret_cast<uintptr_t>(cloned_header)),
                  arg3,
-                 0);  // Force is_external=0 to mark as trusted/internal script
+                 0);  // is_external=0 → trusted/internal script
   g_execute_reentry = false;
+
   g_direct_injection_done = true;
-  MH_LOG("[inject.exec] mode=direct");
-  MH_LOG("[inject] direct call ok");
+  mh_log("[hook] INJECT OK — JS executed, slot switched to ret gadget\n");
+
+  // Note: thunk's tramp_slot was set to ret_gadget at the top of this function.
+  // When we return, the thunk will JMP to the ret gadget (just a RET instruction)
+  // instead of jumping to the trampoline. This prevents double-execution.
+  // The original script for this first call does NOT run — only our injected JS.
+  // All subsequent calls (g_direct_injection_done=true) run the original once.
   return;
 }
 
@@ -217,14 +224,13 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
   size_t numModules;
   r = sceKernelGetModuleList(handles, sizeof(handles), &numModules);
   if (r != 0) {
-    MH_LOG("sceKernelGetModuleList failed: 0x%08X", r);
+    mh_log("[minihook] sceKernelGetModuleList failed: 0x%08X\n", r);
     return -1;
   }
 
   uint64_t module_base = 0;
   uint32_t module_size = 0;
 
-  // Get first module (main executable) - need to find the TEXT segment
   if (numModules > 0) {
     r = sceKernelGetModuleInfo(handles[0], &moduleInfo);
     if (r == 0) {
@@ -238,7 +244,6 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
                  moduleInfo.segmentInfo[seg].prot);
         }
       }
-      // Use first segment (should be TEXT segment with executable code)
       module_base = (uint64_t)moduleInfo.segmentInfo[0].address;
       module_size = moduleInfo.segmentInfo[0].size;
     }
@@ -267,19 +272,33 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
 
   r = mh_install(&g_execute_hook);
   if (r) {
-    MH_LOG("[hook] Execute install FAILED %d", r);
+    mh_log("[minihook] Hook install FAILED: %d\n", r);
     return r;
   }
 
+  // Bind thunk slot to trampoline initially (will be switched to ret gadget
+  // on first callback entry).
   mh_bind_thunk_slot(&__mh_tramp_slot_execute, g_execute_hook.tramp_mem);
   g_real_Execute = (ExecuteFn)g_execute_hook.orig_fn;
-  MH_LOG("[hook] Execute installed. orig=%p tramp=%p target=%p",
+
+  // Prepare a RET gadget in the trampoline page (RWX).
+  // We redirect the thunk's tramp_slot here so the thunk's post-callback
+  // JMP becomes a no-op (just returns to caller), preventing double execution.
+  uint8_t* ret_addr = (uint8_t*)g_execute_hook.tramp_mem + g_execute_hook.tramp_size;
+  *ret_addr = 0xC3;  // RET
+  g_ret_gadget = ret_addr;
+
+  mh_log("[minihook] Hook installed. orig=%p tramp=%p ret=%p target=0x%lx\n",
          (void*)g_real_Execute, g_execute_hook.tramp_mem,
-         (void*)html_execute_addr);
+         g_ret_gadget, html_execute_addr);
+
+  // Create directories
+  sceKernelMkdir("/data/youtube", 0777);
+  sceKernelMkdir("/data/youtube/dump", 0777);
 
   // Start SponsorBlock proxy server
   if (!start_sponsorblock_proxy()) {
-    MH_LOG("[proxy] Failed to start SponsorBlock proxy");
+    mh_log("[minihook] Failed to start SponsorBlock proxy\n");
   }
 
   g_direct_injection_done = false;
@@ -287,7 +306,6 @@ extern "C" s32 attr_public plugin_load(s32, const char**) {
 }
 
 extern "C" s32 attr_public plugin_unload(s32, const char**) {
-  // Stop proxy server
   stop_sponsorblock_proxy();
 
   mh_remove(&g_execute_hook);
@@ -301,7 +319,7 @@ extern "C" s32 attr_public plugin_unload(s32, const char**) {
   g_live_injections.clear();
   g_live_injections.shrink_to_fit();
   g_direct_injection_done = false;
-  MH_LOG("[hook] hooks removed");
+  mh_log("[minihook] hooks removed\n");
   return 0;
 }
 
