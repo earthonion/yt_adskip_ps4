@@ -207,6 +207,6 @@
   onVideoChange();
 
   setTimeout(function() {
-    showToast('Ad Block + SponsorBlock by earthonion', 'Ads blocked, sponsor segments will be skipped');
+    showToast('Ad Block + SponsorBlock Enabled!', 'by earthonion');
   }, 2000);
 })();
