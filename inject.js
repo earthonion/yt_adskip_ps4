@@ -2,10 +2,7 @@
   if (window.__MH_SPONSORBLOCK_LOADED) { return; }
   window.__MH_SPONSORBLOCK_LOADED = true;
 
-  var sponsorSegments = [];
-  var currentVideoId = null;
-  var segmentsSkipped = 0;
-
+  // ── Toast helper (unchanged) ──────────────────────────────────────
   function showToast(title, subtitle) {
     try {
       var popupAction = {
@@ -28,9 +25,36 @@
     } catch(e) {}
   }
 
-  setTimeout(function() {
-    showToast('SponsorBlock Enabled', 'Sponsored segments will be automatically skipped');
-  }, 2000);
+  // ── 1. JSON.parse monkey-patch (from TizenTube) ──────────────────
+  // Intercept YouTube API responses and strip ad data before rendering.
+  // Uses delete (not empty array) so downstream truthiness checks work.
+  var origParse = JSON.parse;
+  JSON.parse = function() {
+    var r = origParse.apply(this, arguments);
+    if (r && typeof r === 'object' && !Array.isArray(r)) {
+      if (r.adPlacements) { delete r.adPlacements; }
+      if (r.playerAds)    { delete r.playerAds; }
+      if (r.adSlots)      { delete r.adSlots; }
+    }
+    return r;
+  };
+
+  // Patch across all YouTube TV internal contexts (once, like TizenTube)
+  window.JSON.parse = JSON.parse;
+  try {
+    for (var key in window._yttv) {
+      if (window._yttv[key] && window._yttv[key].JSON && window._yttv[key].JSON.parse) {
+        window._yttv[key].JSON.parse = JSON.parse;
+      }
+    }
+  } catch(e) {}
+
+  // ── 2. SponsorBlock — event-driven segment skipping ──────────────
+  var sponsorSegments = [];
+  var currentVideoId = null;
+  var currentVideo = null;
+  var skipTimeout = null;
+  var skippedMap = {};  // UUID -> { count, firstSkipped, lastSkipped }
 
   function getVideoId() {
     try {
@@ -51,10 +75,12 @@
         xhr.onload = function() {
           if (xhr.status === 200) {
             try {
-              var data = JSON.parse(xhr.responseText);
+              var data = origParse(xhr.responseText);
               if (Array.isArray(data) && data.length > 0) {
                 sponsorSegments = data;
                 showToast('SponsorBlock', data.length + ' segment(s) found');
+                // Kick off event-driven skipping now that segments are loaded
+                scheduleSkip();
               } else {
                 sponsorSegments = [];
               }
@@ -72,48 +98,115 @@
     tryPort(4040);
   }
 
-  function skipAds() {
-    try {
-      var video = document.querySelector('video');
-      if (!video) return;
-      var skipBtn = document.querySelector('.ytp-ad-skip-button-modern, .ytp-ad-skip-button');
-      if (skipBtn) skipBtn.click();
-      var adContainer = document.querySelector('.ad-showing');
-      if (adContainer && video.duration && isFinite(video.duration)) {
-        video.currentTime = video.duration;
-      }
-    } catch(e) {}
-  }
+  // Event-driven skip scheduling (adapted from TizenTube)
+  function scheduleSkip() {
+    if (skipTimeout) {
+      clearTimeout(skipTimeout);
+      skipTimeout = null;
+    }
 
-  function skipSponsorSegments() {
-    try {
-      var video = document.querySelector('video');
-      if (!video || video.paused || sponsorSegments.length === 0) return;
-      var currentTime = video.currentTime;
-      for (var i = 0; i < sponsorSegments.length; i++) {
-        var seg = sponsorSegments[i].segment;
-        if (currentTime >= seg[0] && currentTime < seg[1]) {
-          video.currentTime = seg[1] + 0.1;
-          segmentsSkipped++;
-          showToast('Segment Skipped', sponsorSegments[i].category + ' (' + Math.floor(seg[1] - seg[0]) + 's)');
-          break;
+    if (!currentVideo || currentVideo.paused || sponsorSegments.length === 0) return;
+
+    var now = currentVideo.currentTime;
+
+    // Find the next segment that hasn't been fully passed yet
+    var nextSegments = [];
+    for (var i = 0; i < sponsorSegments.length; i++) {
+      var seg = sponsorSegments[i].segment;
+      if (seg[0] > now - 0.3 && seg[1] > now - 0.3) {
+        nextSegments.push(sponsorSegments[i]);
+      }
+    }
+    nextSegments.sort(function(a, b) { return a.segment[0] - b.segment[0]; });
+
+    if (nextSegments.length === 0) return;
+
+    var segment = nextSegments[0];
+    var start = segment.segment[0];
+    var end = segment.segment[1];
+    var delay = (start - now) * 1000;
+
+    skipTimeout = setTimeout(function() {
+      if (!currentVideo || currentVideo.paused) return;
+
+      // Infinite-loop protection (from TizenTube): if we've skipped
+      // the same segment multiple times within 1 second, stop.
+      var uuid = segment.UUID || (segment.category + '_' + start + '_' + end);
+      var prev = skippedMap[uuid];
+      if (prev) {
+        prev.count++;
+        prev.lastSkipped = Date.now();
+        if (prev.lastSkipped - prev.firstSkipped < 1000) {
+          return; // likely an infinite skip loop, bail out
         }
+      } else {
+        skippedMap[uuid] = { count: 1, firstSkipped: Date.now(), lastSkipped: Date.now() };
       }
-    } catch(e) {}
+
+      var skipName = segment.category;
+      showToast('Segment Skipped', skipName + ' (' + Math.floor(end - start) + 's)');
+
+      // Avoid seeking to the very end of the video
+      if (currentVideo.duration - end < 1) {
+        currentVideo.currentTime = end - 1;
+      } else {
+        currentVideo.currentTime = end;
+      }
+
+      // Schedule the next segment
+      scheduleSkip();
+    }, Math.max(delay, 0));
   }
 
-  function checkVideoChange() {
+  function onScheduleSkip() {
+    scheduleSkip();
+  }
+
+  // ── 3. Video attachment & cleanup ─────────────────────────────────
+  function detachVideo() {
+    if (currentVideo) {
+      currentVideo.removeEventListener('play', onScheduleSkip);
+      currentVideo.removeEventListener('pause', onScheduleSkip);
+      currentVideo.removeEventListener('timeupdate', onScheduleSkip);
+      currentVideo = null;
+    }
+    if (skipTimeout) {
+      clearTimeout(skipTimeout);
+      skipTimeout = null;
+    }
+  }
+
+  function attachVideo() {
+    detachVideo();
+    var video = document.querySelector('video');
+    if (!video) {
+      setTimeout(attachVideo, 200);
+      return;
+    }
+    currentVideo = video;
+    currentVideo.addEventListener('play', onScheduleSkip);
+    currentVideo.addEventListener('pause', onScheduleSkip);
+    currentVideo.addEventListener('timeupdate', onScheduleSkip);
+  }
+
+  // ── 4. Video change detection via hashchange event ────────────────
+  function onVideoChange() {
     var videoId = getVideoId();
     if (videoId && videoId !== currentVideoId) {
       currentVideoId = videoId;
       sponsorSegments = [];
-      segmentsSkipped = 0;
+      skippedMap = {};
+      attachVideo();
       loadSponsorBlock(videoId);
     }
   }
 
-  setInterval(skipAds, 50);
-  setInterval(skipSponsorSegments, 500);
-  setInterval(checkVideoChange, 1000);
-  checkVideoChange();
+  window.addEventListener('hashchange', onVideoChange, false);
+
+  // Initial check
+  onVideoChange();
+
+  setTimeout(function() {
+    showToast('Ad Block + SponsorBlock by earthonion', 'Ads blocked, sponsor segments will be skipped');
+  }, 2000);
 })();
