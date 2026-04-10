@@ -184,6 +184,7 @@
       return;
     }
     currentVideo = video;
+    video.volume = +(localStorage.getItem('custom_volume') || '0');
     currentVideo.addEventListener('play', onScheduleSkip);
     currentVideo.addEventListener('pause', onScheduleSkip);
     currentVideo.addEventListener('timeupdate', onScheduleSkip);
@@ -205,6 +206,34 @@
 
   // Initial check
   onVideoChange();
+  
+  // ── 5. Video volume control ────────────────
+  var timer = null;
+  
+  function showVolume() {
+    var video = currentVideo;
+    if (!video) return;
+    const text = '🔊 ' + Math.round(video.volume * 100) + '%';
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      showToast(text);
+    }, 2000);
+  }
+  
+  window.addEventListener('keydown', function(e) {
+    var video = currentVideo;
+    if (!video) return;
+    var step = 0.05;
+    if (e.keyCode === 37) { // D-PAD RIGHT
+      video.volume = Math.min(1, video.volume + step);
+      localStorage.setItem('custom_volume', video.volume);
+      showVolume();
+    } else if (e.keyCode === 39) { // D-PAD LEFT
+      video.volume = Math.max(0, video.volume - step);
+      localStorage.setItem('custom_volume', video.volume);
+      showVolume();
+    }
+  });
 
   setTimeout(function() {
     showToast('Ad Block + SponsorBlock Enabled!', 'by earthonion');
