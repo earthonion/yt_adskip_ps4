@@ -184,7 +184,7 @@
       return;
     }
     currentVideo = video;
-    video.volume = +(localStorage.getItem('custom_volume') || '0');
+    video.volume = +(localStorage.getItem('custom_volume') || '1');
     currentVideo.addEventListener('play', onScheduleSkip);
     currentVideo.addEventListener('pause', onScheduleSkip);
     currentVideo.addEventListener('timeupdate', onScheduleSkip);
