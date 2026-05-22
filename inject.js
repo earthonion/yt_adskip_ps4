@@ -217,7 +217,7 @@
     clearTimeout(timer);
     timer = setTimeout(function() {
       showToast(text);
-    }, 2000);
+    }, 500);
   }
   
   window.addEventListener('keydown', function(e) {
